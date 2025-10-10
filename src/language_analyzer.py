@@ -15,14 +15,7 @@ from azure.ai.textanalytics import (
 
 def analyze_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Analyzes a list of articles using Azure AI Language service.
-
-    Args:
-        articles: A list of article dictionaries.
-
-    Returns:
-        The same list of articles, with 'sentiment', 'key_phrases',
-        and 'entities' keys added to each dictionary.
+    Analyzes a list of articles in batches using Azure AI Language service.
     """
     load_dotenv()
     language_key = os.getenv('LANGUAGE_KEY')
@@ -35,53 +28,60 @@ def analyze_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     credential = AzureKeyCredential(language_key)
     text_analytics_client = TextAnalyticsClient(endpoint=language_endpoint, credential=credential)
 
-    # Prepare the documents for Azure
-    documents_text = [article.get('content', '')[:5120] for article in articles]
+    analyzed_articles_list = []
     
-    # Run the analysis
-    try:
-        poller = text_analytics_client.begin_analyze_actions(
-            documents_text,
-            actions=[
-                RecognizeEntitiesAction(),
-                ExtractKeyPhrasesAction(),
-                AnalyzeSentimentAction(),
-            ],
-        )
-        action_results = poller.result()
-
-        # Process and append the results back to the original articles
-        for original_article, doc_actions in zip(articles, action_results):
-            # Initialize results fields
-            original_article['sentiment'] = {}
-            original_article['key_phrases'] = []
-            original_article['entities'] = []
-
-            for action_result in doc_actions:
-                if action_result.is_error:
-                    logging.warning(f"Error analyzing document {original_article.get('link')}: {action_result.error.message}")
-                    continue
-
-                if action_result.kind == "SentimentAnalysis":
-                    original_article['sentiment'] = {
-                        'overall': action_result.sentiment,
-                        'positive_score': action_result.confidence_scores.positive,
-                        'neutral_score': action_result.confidence_scores.neutral,
-                        'negative_score': action_result.confidence_scores.negative
-                    }
-                
-                elif action_result.kind == "KeyPhraseExtraction":
-                    original_article['key_phrases'] = action_result.key_phrases
-
-                elif action_result.kind == "EntityRecognition":
-                    original_article['entities'] = [
-                        {'text': entity.text, 'category': entity.category, 'confidence': entity.confidence_score}
-                        for entity in action_result.entities
-                    ]
+    # --> THIS IS THE FIX <--
+    # Process the articles in batches of 25.
+    batch_size = 25
+    for i in range(0, len(articles), batch_size):
+        batch = articles[i:i + batch_size]
+        documents_text = [article.get('content', '')[:5120] for article in batch]
         
-        logging.info(f"Successfully analyzed {len(articles)} articles.")
-        return articles
+        logging.info(f"Analyzing batch of {len(batch)} articles...")
 
-    except Exception as e:
-        logging.error(f"An error occurred during Azure AI Language analysis: {e}")
-        return articles # Return original articles on failure
+        try:
+            poller = text_analytics_client.begin_analyze_actions(
+                documents_text,
+                actions=[
+                    RecognizeEntitiesAction(),
+                    ExtractKeyPhrasesAction(),
+                    AnalyzeSentimentAction(),
+                ],
+            )
+            action_results = poller.result()
+
+            for original_article, doc_actions in zip(batch, action_results):
+                original_article['sentiment'] = {}
+                original_article['key_phrases'] = []
+                original_article['entities'] = []
+
+                for action_result in doc_actions:
+                    if action_result.is_error:
+                        logging.warning(f"Error analyzing document {original_article.get('link')}: {action_result.error.message}")
+                        continue
+
+                    if action_result.kind == "SentimentAnalysis":
+                        original_article['sentiment'] = {
+                            'overall': action_result.sentiment,
+                            'positive_score': action_result.confidence_scores.positive,
+                            'neutral_score': action_result.confidence_scores.neutral,
+                            'negative_score': action_result.confidence_scores.negative
+                        }
+                    
+                    elif action_result.kind == "KeyPhraseExtraction":
+                        original_article['key_phrases'] = action_result.key_phrases
+
+                    elif action_result.kind == "EntityRecognition":
+                        original_article['entities'] = [
+                            {'text': entity.text, 'category': entity.category, 'confidence': entity.confidence_score}
+                            for entity in action_result.entities
+                        ]
+                
+                analyzed_articles_list.append(original_article)
+
+        except Exception as e:
+            logging.error(f"An error occurred during Azure AI Language analysis batch: {e}")
+            # Add original articles to results even if analysis fails for this batch
+            analyzed_articles_list.extend(batch)
+            
+    return analyzed_articles_list

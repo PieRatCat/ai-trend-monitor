@@ -52,26 +52,30 @@ def save_articles_to_blob(articles: List[Dict[str, Any]], container_name: str) -
         return
         
     try:
-        # Create a unique blob name for each day's run
-        today_str = datetime.utcnow().strftime('%Y-%m-%d')
-        blob_name = f"{container_name}_{today_str}.json"
+        today_str = datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
+        # Use a more descriptive blob name, e.g., raw-articles_2025-10-10.json
+        blob_name = f"{container_name.replace('-','_')}_{today_str}.json"
 
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
         
-        # We may be adding to today's file, so download existing data first
+        # --> THIS IS THE FIX <--
+        # Get the container client and create the container if it doesn't exist.
+        container_client = blob_service_client.get_container_client(container_name)
+        container_client.create_container_if_not_exists()
+        
+        blob_client = container_client.get_blob_client(blob_name)
+        
         try:
             downloader = blob_client.download_blob(max_connections=1, encoding='UTF-8')
             existing_data = json.loads(downloader.readall())
-            articles = existing_data + articles
+            articles_to_upload = existing_data + articles
         except Exception:
-            # Blob doesn't exist yet, which is fine.
-            existing_data = []
+            articles_to_upload = articles
 
-        json_data = json.dumps(articles, indent=4, ensure_ascii=False)
+        json_data = json.dumps(articles_to_upload, indent=4, ensure_ascii=False)
         blob_client.upload_blob(json_data.encode('utf-8'), overwrite=True)
         
-        logging.info(f"Successfully saved/updated {len(articles)} articles to {blob_name} in container {container_name}.")
+        logging.info(f"Successfully saved/updated {len(articles_to_upload)} articles to {blob_name} in container {container_name}.")
 
     except Exception as e:
         logging.error(f"Error saving articles to '{container_name}': {e}")
