@@ -1,4 +1,3 @@
-# Minimal requirements inferred from the repository's notebook imports (adjust versions as needed)
 ipykernel
 pandas
 requests
