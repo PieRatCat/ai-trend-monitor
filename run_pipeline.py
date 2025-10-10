@@ -19,7 +19,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def run_data_pipeline():
     """
     Runs the data collection, deduplication, and storage pipeline.
-    It populates the 'content' field directly from the 'summary'.
     """
     load_dotenv()
     container_name = 'ai-news'
@@ -33,17 +32,17 @@ def run_data_pipeline():
     
     newly_collected_articles = api_articles + rss_articles
 
-    # 2. **Baseline Step**: Create the 'content' field directly from the 'summary'
-    for article in newly_collected_articles:
-        article['content'] = article.get('summary', '')
+    if not newly_collected_articles:
+        logging.info("No new articles were collected. Pipeline finished.")
+        return
 
-    logging.info(f"Total articles collected and processed: {len(newly_collected_articles)}")
+    logging.info(f"Total articles collected: {len(newly_collected_articles)}")
 
-    # 3. Get existing articles for deduplication
+    # 2. Get existing articles for deduplication
     logging.info("\n--- Checking for existing articles in Blob Storage ---")
     existing_articles = get_existing_articles(container_name, blob_name)
 
-    # 4. Deduplicate the new articles
+    # 3. Deduplicate the new articles against the existing ones
     unique_new_articles = deduplicate_articles(newly_collected_articles, existing_articles)
     
     if not unique_new_articles:
@@ -52,8 +51,10 @@ def run_data_pipeline():
 
     logging.info(f"Found {len(unique_new_articles)} new unique articles.")
 
-    # 5. Combine and save
+    # 4. Combine existing articles with the unique new ones
     all_articles = existing_articles + unique_new_articles
+    
+    # 5. Save the final combined list back to Blob Storage
     logging.info("\n--- Saving combined data to Azure Blob Storage ---")
     save_to_blob_storage(all_articles, container_name, blob_name)
     
