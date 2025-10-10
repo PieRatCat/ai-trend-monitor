@@ -1,0 +1,13 @@
+# Minimal requirements inferred from the repository's notebook imports (adjust versions as needed)
+ipykernel
+pandas
+requests
+python-dotenv
+azure-identity
+azure-storage-blob
+azure-ai-textanalytics
+azure-search-documents
+openai
+beautifulsoup4
+feedparser
+python-pptx

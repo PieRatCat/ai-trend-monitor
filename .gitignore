@@ -1,0 +1,79 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoints and outputs
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Common IDEs
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Pytest, coverage, caches
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.cache/
+
+# Mypy/flake caches
+.mypy_cache/
+
+# Logs, databases and local state
+*.log
+logs/
+*.sqlite3
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Secrets and environment files
+.env.local
+.env.*.local
+secrets.json
+credentials.json
+
+# Notebook outputs or large artifacts (opt-in: remove if you track notebooks outputs)
+output/
+outputs/
+
+# Misc
+*.bak
+*.backup
+
+# Google Drive temporary files (if any)
+~$*
