@@ -77,3 +77,7 @@ outputs/
 
 # Google Drive temporary files (if any)
 ~$*
+api-processing.ipynb
+.gitignore
+ai-news.json
+run_pipeline.ipynb
