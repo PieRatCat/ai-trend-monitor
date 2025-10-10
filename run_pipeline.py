@@ -1,7 +1,7 @@
 import logging
 from dotenv import load_dotenv
 
-# Import all necessary functions from your modules
+# Import all necessary functions
 from src.api_fetcher import fetch_guardian_api
 from src.rss_fetcher import fetch_rss_feeds
 from src.storage import get_existing_articles, save_to_blob_storage
@@ -25,45 +25,38 @@ def run_data_pipeline():
     container_name = 'ai-news'
     blob_name = 'ai-news.json'
 
-    logging.info("--- Pipeline Starting: Data Collection ---")
+    logging.info("--- Pipeline Starting: Data Collection & Scraping ---")
 
     # 1. Fetch data from sources
     api_articles = fetch_guardian_api(API_SOURCES['guardian'], SEARCH_QUERY)
     rss_articles = fetch_rss_feeds(RSS_FEED_URLS)
 
-    # --- Process RSS articles: Scrape and Clean ---
-    logging.info(f"Processing {len(rss_articles)} articles from RSS feeds...")
+    # 2. Scrape full content for RSS articles
+    logging.info(f"Scraping content for {len(rss_articles)} RSS articles...")
     for article in rss_articles:
-        # Use the existing summary as a safe fallback
-        content_to_clean = article.get('content', '')
-        
-        if article.get('link'): # 'link' is the key from your RSS fetcher
+        if article.get('link'):
             try:
-                # Use our robust scraper to get the full HTML content
-                scraped_html = get_full_content(article['link'])
-                if scraped_html:
-                    content_to_clean = scraped_html
-                    
+                full_html = get_full_content(article['link'])
+                if full_html:
+                    article['content'] = full_html # Overwrite summary with full content
             except Exception as e:
                 logging.warning(f"Scraping failed for {article.get('link')}: {e}. Using summary.")
-        
-        # Clean the final content (either summary or scraped HTML)
-        article['content'] = clean_article_content(content_to_clean)
 
-    # Combine the lists (API content is already clean)
+    # 3. Combine and Clean All Articles
     newly_collected_articles = api_articles + rss_articles
+    logging.info(f"\n--- Cleaning {len(newly_collected_articles)} total articles ---")
     
-    if not newly_collected_articles:
-        logging.info("No new articles were collected. Pipeline finished.")
-        return
+    # --> THIS IS THE FIX <--
+    # Loop through the combined list and clean every article.
+    for article in newly_collected_articles:
+        raw_content = article.get('content', '')
+        article['content'] = clean_article_content(raw_content)
 
-    logging.info(f"Total articles processed: {len(newly_collected_articles)}")
+    logging.info("All articles have been cleaned.")
 
-    # 2. Get existing articles for deduplication
+    # 4. Deduplicate against existing articles
     logging.info("\n--- Checking for existing articles in Blob Storage ---")
     existing_articles = get_existing_articles(container_name, blob_name)
-
-    # 3. Deduplicate the new articles
     unique_new_articles = deduplicate_articles(newly_collected_articles, existing_articles)
     
     if not unique_new_articles:
@@ -72,7 +65,7 @@ def run_data_pipeline():
 
     logging.info(f"Found {len(unique_new_articles)} new unique articles.")
 
-    # 4. Combine and save the final list
+    # 5. Combine and save the final list
     all_articles = existing_articles + unique_new_articles
     logging.info("\n--- Saving combined data to Azure Blob Storage ---")
     save_to_blob_storage(all_articles, container_name, blob_name)
