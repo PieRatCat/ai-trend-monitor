@@ -39,7 +39,8 @@ def get_existing_articles(container_name: str, blob_name: str) -> List[Dict[str,
 
 def save_to_blob_storage(articles: List[Dict[str, Any]], container_name: str, blob_name: str) -> None:
     """
-    Saves a list of articles as a JSON file to Azure Blob Storage.
+    Saves a list of articles as a JSON file to Azure Blob Storage,
+    ensuring correct UTF-8 character encoding.
     """
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
 
@@ -50,10 +51,13 @@ def save_to_blob_storage(articles: List[Dict[str, Any]], container_name: str, bl
     try:
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
         
-        json_data = json.dumps(articles, indent=4)
+        # Use ensure_ascii=False to write Unicode characters directly.
+        json_data = json.dumps(articles, indent=4, ensure_ascii=False)
         
         blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
-        blob_client.upload_blob(json_data, overwrite=True)
+        
+        # Upload the properly encoded string
+        blob_client.upload_blob(json_data.encode('utf-8'), overwrite=True)
 
         logging.info(f"Successfully uploaded data to {blob_name} in container {container_name}.")
     
