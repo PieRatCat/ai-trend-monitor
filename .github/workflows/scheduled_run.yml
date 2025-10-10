@@ -1,0 +1,33 @@
+name: Scheduled Data Pipeline Run
+
+on:
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+  schedule:
+    # Runs at 05:30 UTC every day.
+    # The format is minute, hour, day, month, day-of-week.
+    - cron: '30 5 * * *'
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the data pipeline
+        run: python run_pipeline.py
+        env:          
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          LANGUAGE_KEY: ${{ secrets.LANGUAGE_KEY }}
+          LANGUAGE_ENDPOINT: ${{ secrets.LANGUAGE_ENDPOINT }}
