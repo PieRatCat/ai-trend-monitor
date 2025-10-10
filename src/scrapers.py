@@ -23,6 +23,21 @@ FALLBACK_SELECTORS = [
     'div[itemprop="articleBody"]',
 ]
 
+def fix_encoding_issues(text: str) -> str:
+    """
+    A failsafe function to clean up common UTF-8 vs. Windows-1252 mojibake.
+    """
+    # Fix common garbled characters resulting from encoding mismatches.
+    # This is a targeted fix for the issue seen with Gizmodo.
+    replacements = {
+        'â€™': "'",  # Replaces the garbled apostrophe
+        'â€"': "—",  # Replaces the garbled em dash
+        'â€œ': '"',  # Replaces garbled opening quote
+        'â€': '"',  # Replaces garbled closing quote
+    }
+    for bad_char, good_char in replacements.items():
+        text = text.replace(bad_char, good_char)
+    return text
 
 def get_full_content(url: str) -> str:
     """Scrape full article text for a URL.
@@ -30,10 +45,10 @@ def get_full_content(url: str) -> str:
     Behavior:
     - If a site-specific selector exists in `SCRAPERS`, use it.
     - Otherwise, try a set of sensible fallback selectors.
+    - Explicitly decodes response text to handle encoding issues.
     - Returns empty string on failure.
     """
     source_domain = urlparse(url).netloc
-
     headers = {
         'User-Agent': (
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -41,19 +56,24 @@ def get_full_content(url: str) -> str:
             'Chrome/125.0.0.0 Safari/537.36'
         )
     }
-
-    # Short delay to be polite and avoid trivial rate-limits
     time.sleep(1)
 
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
+        
+        # --> ENHANCED ENCODING HANDLING <--
+        # Let requests detect the encoding, but fall back to UTF-8 if it's uncertain.
+        response.encoding = response.apparent_encoding or 'utf-8'
+        
+        # Use response.text which is now properly decoded.
+        soup = BeautifulSoup(response.text, 'html.parser')
+
     except requests.exceptions.RequestException as e:
         logging.error("Error fetching %s: %s", url, e)
         return ""
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-
+    content_text = ""
     # Try site-specific selector first
     selector = None
     if source_domain in SCRAPERS:
@@ -62,18 +82,25 @@ def get_full_content(url: str) -> str:
     if selector:
         element = soup.select_one(selector)
         if element:
-            return element.get_text(separator=' ', strip=True)
+            content_text = element.get_text(separator=' ', strip=True)
         else:
             logging.debug(
                 "Site-specific selector did not match for %s (selector=%s)", url, selector
             )
 
-    # Fallback: try generic selectors
-    for sel in FALLBACK_SELECTORS:
-        element = soup.select_one(sel)
-        if element:
-            logging.info("Using fallback selector '%s' for %s", sel, source_domain)
-            return element.get_text(separator=' ', strip=True)
+    # Fallback: try generic selectors if the first attempt failed
+    if not content_text:
+        for sel in FALLBACK_SELECTORS:
+            element = soup.select_one(sel)
+            if element:
+                logging.info("Using fallback selector '%s' for %s", sel, source_domain)
+                content_text = element.get_text(separator=' ', strip=True)
+                break # Stop after the first successful fallback
 
-    logging.warning("Could not extract article content for %s (domain=%s)", url, source_domain)
-    return ""
+    if not content_text:
+        logging.warning("Could not extract article content for %s (domain=%s)", url, source_domain)
+        return ""
+
+    # --> ADDED: FINAL CLEANUP STEP <--
+    # Apply the encoding fix as a final polish before returning.
+    return fix_encoding_issues(content_text)
