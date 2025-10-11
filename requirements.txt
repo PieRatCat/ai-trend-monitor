@@ -6,11 +6,3 @@ azure-storage-blob
 azure-ai-textanalytics
 beautifulsoup4
 feedparser
-logging
-datetime
-typing
-re
-unicodedata
-html
-time
-urllib
