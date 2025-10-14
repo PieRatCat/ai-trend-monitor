@@ -1,0 +1,1 @@
+SEARCH_QUERY = '"generative AI" OR "large language model" OR "machine learning" OR "deep learning" OR "neural network" OR "natural language processing" OR "computer vision" OR "AI ethics" OR "AI bias" OR "AI regulation" OR ChatGPT OR Copilot OR "Google AI" OR "Microsoft AI" OR "Anthropic" OR "OpenAI"'

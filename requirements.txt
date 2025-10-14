@@ -1,0 +1,8 @@
+ipykernel
+requests
+python-dotenv
+azure-identity
+azure-storage-blob
+azure-ai-textanalytics
+beautifulsoup4
+feedparser
