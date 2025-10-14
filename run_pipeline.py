@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 # Import functions
 from src.api_fetcher import fetch_guardian_api
 from src.rss_fetcher import fetch_rss_feeds
-from src.storage import get_all_historical_articles, save_articles_to_blob
+from src.storage import get_processed_urls, update_processed_urls, save_articles_to_blob
 from src.utils import deduplicate_articles
 from src.scrapers import get_full_content
 from src.data_cleaner import clean_article_content
@@ -38,10 +38,18 @@ def run_data_pipeline():
     for article in newly_collected_articles:
         article['content'] = clean_article_content(article.get('content', ''))
 
-    # Step 2: Deduplicate against the entire history
-    logging.info("\n--- Deduplicating against historical data ---")
-    historical_articles = get_all_historical_articles(raw_container)
-    unique_new_articles = deduplicate_articles(newly_collected_articles, historical_articles)
+    # Step 2: Deduplicate against processed URLs
+    logging.info("\n--- Deduplicating against processed URLs ---")
+    processed_urls = get_processed_urls(analyzed_container)
+    
+    # Filter out articles that have already been processed
+    unique_new_articles = [
+        article for article in newly_collected_articles
+        if article.get('link') and article.get('link') not in processed_urls
+    ]
+    
+    num_duplicates = len(newly_collected_articles) - len(unique_new_articles)
+    logging.info(f"Found and removed {num_duplicates} already-processed articles.")
     
     if not unique_new_articles:
         logging.info("No unique new articles found. Pipeline finished.")
@@ -59,6 +67,11 @@ def run_data_pipeline():
     # Step 5: Save the new ANALYZED articles
     logging.info(f"\n--- Saving {len(analyzed_articles)} new analyzed articles ---")
     save_articles_to_blob(analyzed_articles, analyzed_container)
+    
+    # Step 6: Update the URL registry with newly processed articles
+    logging.info("\n--- Updating URL registry ---")
+    new_urls = [article.get('link') for article in analyzed_articles if article.get('link')]
+    update_processed_urls(new_urls, analyzed_container)
     
     logging.info(f"\nPipeline Finished Successfully.")
 

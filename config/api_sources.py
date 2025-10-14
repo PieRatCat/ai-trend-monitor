@@ -3,4 +3,3 @@ API_SOURCES = {
         'url': 'https://content.guardianapis.com/search'        
         }
     }
-}
