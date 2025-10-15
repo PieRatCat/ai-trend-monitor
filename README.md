@@ -77,11 +77,9 @@ Building Streamlit web application with:
 
 ## Current Statistics
 
-- **Total Articles Indexed**: 150
+- **Total Articles Indexed**: 149
 - **URLs in Registry**: 149
 - **Data Sources**: 5 (1 API + 4 RSS feeds)
-
-**Note**: The 1 article difference between registry (149) and index (150) is due to one test article uploaded during initial search index validation.
 
 ## Technology Stack
 

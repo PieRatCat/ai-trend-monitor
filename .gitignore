@@ -33,3 +33,7 @@ Thumbs.db
 
 # Utility scripts directory (testing/one-time scripts)
 utilities/
+
+# Streamlit cache
+.streamlit/
+streamlit_app/.streamlit/secrets.toml

@@ -7,3 +7,11 @@ azure-ai-textanalytics
 azure-search-documents
 beautifulsoup4
 feedparser
+streamlit
+plotly
+pandas
+numpy
+seaborn
+matplotlib
+scipy
+wordcloud

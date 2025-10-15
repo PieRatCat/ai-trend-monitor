@@ -3,6 +3,14 @@
 ## Project Overview
 This is an **AI news aggregation pipeline** that collects, deduplicates, analyzes, and stores AI-related articles from multiple sources. The pipeline runs as a scheduled batch job, storing results in Azure Blob Storage with Azure AI Language analysis.
 
+## Critical Development Rule
+**⚠️ ALWAYS activate the `trend-monitor` conda environment before running ANY Python scripts, terminal commands, or installations.**
+
+When running Python scripts or commands in terminal, ensure you're in the correct environment:
+- Windows PowerShell: First activate with `conda activate trend-monitor`
+- All Python package installations must use: `conda activate trend-monitor ; pip install <package>`
+- All script executions must use: `conda activate trend-monitor ; python <script.py>`
+
 ## Project Goals
 
 This project implements a comprehensive AI-powered news monitoring system with the following objectives:
@@ -188,8 +196,31 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 - 📋 Phase 6: Automated Reports (Planned)
 
 **Key Metrics**:
-- 150 articles indexed in Azure AI Search
-- 149 URLs in registry (1 article difference due to initial test article)
+- 149 articles indexed in Azure AI Search
+- 149 URLs in registry
 - Free tier Search + Standard tier Language
 
 **Next Milestone**: Build Streamlit interactive dashboard with search, filters, and visualizations (trend timeline, key topics, sentiment breakdown, source analysis)
+
+## 🚨 NEXT SESSION PRIORITY - Responsive Design Issues
+
+**CRITICAL**: The Streamlit dashboard layout needs responsive design improvements for smaller screens.
+
+**Current Issues:**
+1. **Text Cutoff**: Large fonts in metric boxes and headers get cut off when screen is resized smaller
+2. **Chart Layout**: Top row charts (Sentiment Distribution, Articles by Source, Articles Over Time) remain side-by-side on small screens instead of stacking vertically
+3. **Chart Size**: Charts become too small to read properly on narrow screens
+4. **Bottom Charts**: Topic Trend Timeline and Net Sentiment Distribution may also need responsive behavior
+
+**Required Fixes:**
+- Implement responsive font sizing that scales with viewport width
+- Add CSS media queries or Streamlit column logic to stack charts vertically on mobile/tablet screens
+- Ensure metric boxes resize gracefully without text overflow
+- Test on multiple screen sizes: desktop (1920px), laptop (1366px), tablet (768px), mobile (375px)
+- Consider using `st.container()` with custom CSS for better control
+
+**Files to Modify:**
+- `streamlit_app/app.py` - Main dashboard layout
+- Potentially add custom CSS via `st.markdown()` with `unsafe_allow_html=True`
+
+**Priority**: HIGH - User experience issue that affects usability on non-desktop devices
