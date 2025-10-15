@@ -37,3 +37,4 @@ utilities/
 # Streamlit cache
 .streamlit/
 streamlit_app/.streamlit/secrets.toml
+run_dashboard.py
