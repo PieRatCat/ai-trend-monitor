@@ -7,31 +7,34 @@ This is an **AI news aggregation pipeline** that collects, deduplicates, analyze
 
 This project implements a comprehensive AI-powered news monitoring system with the following objectives:
 
-1. **Data Pipeline Implementation** ✅ *Current Focus*
+1. **Data Pipeline Implementation** ✅ *COMPLETE*
    - Build Python script to ingest news and social media data from multiple API sources and RSS feeds
    - Store all raw data in Azure Blob Storage
    - *Status*: Core pipeline implemented with Guardian API + 4 RSS feeds
 
-2. **Advanced NLP Analysis** ✅ *Current Focus*
+2. **Advanced NLP Analysis** ✅ *COMPLETE*
    - Apply Azure AI Language services (Key Phrase Extraction, Named Entity Recognition, Sentiment Analysis)
    - *Status*: Implemented with batched processing (25 docs at a time)
 
-3. **Knowledge Mining** 🚧 *Planned*
+3. **Knowledge Mining** ✅ *COMPLETE*
    - Use Azure AI Search to index analyzed data
-   - Create semantically searchable knowledge base
+   - Create searchable knowledge base
+   - *Status*: 262 articles indexed with automated pipeline integration, keyword search operational
 
-4. **Agentic Solution** 🚧 *Planned*
-   - Build chatbot/agent using Azure OpenAI Service
-   - Ground responses in the knowledge base
+4. **Interactive Web Dashboard** 🚧 *IN PROGRESS*
+   - Build Streamlit web application hosted on Azure
+   - Display trends, visualizations, and search interface
+   - *Planned Features*: Search bar with filters, trend timeline, key topics analysis, sentiment breakdown, source analysis
 
-5. **Dynamic Web Interface** 🚧 *Planned*
-   - Design responsive webpage (Azure App Service or Static Web Apps + Functions)
-   - Display latest trends, headlines, and key statistics
+5. **RAG-Powered Chatbot** 🚧 *PLANNED*
+   - Integrate Azure OpenAI Service with Retrieval-Augmented Generation (RAG)
+   - Build conversational agent grounded in knowledge base
+   - Enable natural language queries about AI trends
 
-6. **Final Output** 🚧 *Planned*
-   - Comprehensive Jupyter Notebook
-   - Live Azure webpage URL
-   - Presentation documenting methodology, results, and insights
+6. **Automated Weekly Reports** 🚧 *PLANNED*
+   - Create weekly automated trend reports
+   - Generate insights summaries with Azure OpenAI
+   - Deliver comprehensive analysis of AI landscape changes
 
 ## Architecture & Data Flow
 
@@ -44,8 +47,9 @@ This project implements a comprehensive AI-powered news monitoring system with t
 6. **Analyze** → Azure AI Language (sentiment, entities, key phrases) in batches of 25, max 5120 chars/doc
 7. **Store** → Save to Azure Blob Storage in timestamped compact JSON files
 8. **Update Registry** → Add new URLs to processed_urls.json
+9. **Index** → Upload to Azure AI Search for searchability
 
-Two containers: `raw-articles` (cleaned text) and `analyzed-articles` (with AI insights).
+Three containers: `raw-articles` (cleaned text), `analyzed-articles` (with AI insights + URL registry), and Azure AI Search index `ai-articles-index` (262 articles).
 
 ## Key Conventions
 
@@ -130,6 +134,8 @@ pip install -r requirements.txt
 # AZURE_STORAGE_CONNECTION_STRING=...
 # LANGUAGE_KEY=...
 # LANGUAGE_ENDPOINT=...
+# SEARCH_ENDPOINT=...
+# SEARCH_KEY=...
 ```
 
 ### Running the Pipeline
@@ -156,8 +162,10 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 
 - **Azure Blob Storage**: Primary data persistence; compact JSON for efficiency
 - **Azure AI Language**: Batched analysis (25 docs/request, 5120 char limit per doc, truncation logged)
+- **Azure AI Search**: Free tier (F) with keyword search; 262 articles indexed
 - **BeautifulSoup**: HTML parsing for all scraped content (Guardian, RSS sources)
 - **feedparser**: RSS feed parsing (handles various RSS/Atom formats)
+- **azure-search-documents** (11.5.3): Search index management and querying
 
 ## Common Pitfalls
 
@@ -167,3 +175,22 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 4. **Link variations**: Some RSS feeds have tracking params; consider URL normalization for better dedup
 5. **Content filtering**: Articles with <100 chars are filtered out before analysis to save costs
 6. **Truncation**: Long articles (>5120 chars) are truncated for Azure AI; check warnings for affected articles
+7. **Search field names**: Use `link` (not `url`), `sentiment_overall` (not `sentiment_label`) when querying index
+
+## Current System Status
+
+**Phases Complete**: 3 of 6
+- ✅ Phase 1: Data Pipeline (Guardian API + 4 RSS feeds)
+- ✅ Phase 2: NLP Analysis (Azure AI Language)
+- ✅ Phase 3: Knowledge Mining (Azure AI Search with 262 articles)
+- 🚧 Phase 4: Streamlit Dashboard (Starting)
+- 📋 Phase 5: RAG Chatbot (Planned)
+- 📋 Phase 6: Automated Reports (Planned)
+
+**Key Metrics**:
+- 262 articles indexed in Azure AI Search
+- 149 URLs in registry
+- Free tier Search + Standard tier Language
+- 65 SEK (~$6 USD) total costs, 200 SEK budget alert
+
+**Next Milestone**: Build Streamlit interactive dashboard with search, filters, and visualizations (trend timeline, key topics, sentiment breakdown, source analysis)
