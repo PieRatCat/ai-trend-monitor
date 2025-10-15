@@ -11,6 +11,8 @@ SCRAPERS: Dict[str, Dict[str, str]] = {
     'gizmodo.com': {'selector': 'div.entry-content'},
     'techcrunch.com': {'selector': 'div.entry-content'},
     'arstechnica.com': {'selector': 'div.post-content'},
+    'theguardian.com': {'selector': 'div.article-body-commercial-selector'},  # Guardian article body
+    'www.theguardian.com': {'selector': 'div.article-body-commercial-selector'},
 }
 
 # Generic selectors to try when there is no site-specific scraper
@@ -77,6 +79,15 @@ def get_full_content(url: str) -> str:
     # --- End of new retry logic ---
 
     response.encoding = response.apparent_encoding or 'utf-8'
+    
+    # Limit HTML size to prevent parsing issues with huge pages
+    max_html_size = 5 * 1024 * 1024  # 5 MB limit
+    if len(response.content) > max_html_size:
+        logging.warning(
+            f"HTML too large for {url} ({len(response.content)} bytes). Skipping scrape."
+        )
+        return ""
+    
     soup = BeautifulSoup(response.text, 'html.parser')    
     
     # Create a prioritized list of selectors to try

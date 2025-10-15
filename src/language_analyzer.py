@@ -30,9 +30,21 @@ def analyze_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     
     # Process the articles in batches of 25.
     batch_size = 25
+    max_chars = 5120  # Azure AI Language limit
+    
     for i in range(0, len(articles), batch_size):
         batch = articles[i:i + batch_size]
-        documents_text = [article.get('content', '')[:5120] for article in batch]
+        
+        # Prepare documents and log truncations
+        documents_text = []
+        for article in batch:
+            content = article.get('content', '')
+            if len(content) > max_chars:
+                logging.warning(
+                    f"Truncating article '{article.get('title', 'Unknown')[:50]}...' "
+                    f"from {len(content)} to {max_chars} characters for Azure AI analysis."
+                )
+            documents_text.append(content[:max_chars])
         
         logging.info(f"Analyzing batch of {len(batch)} articles...")
 

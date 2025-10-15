@@ -25,7 +25,7 @@ def fetch_guardian_api(source_details: Dict[str, Any], query_string: str) -> Lis
     params = {
         'api-key': api_key,
         'q': query_string,
-        'show-fields': 'body',
+        # Removed 'show-fields': 'body' - will scrape content later like RSS feeds
         'page-size': 50  # Max articles per request
     }
 
@@ -37,7 +37,7 @@ def fetch_guardian_api(source_details: Dict[str, Any], query_string: str) -> Lis
         articles = [
             {
                 'title': article.get('webTitle'),
-                'content': article.get('fields', {}).get('body', ''),
+                'content': '',  # Empty initially, will be scraped later
                 'source': 'The Guardian',
                 'published_date': article.get('webPublicationDate'),
                 'link': article.get('webUrl')

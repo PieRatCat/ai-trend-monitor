@@ -56,14 +56,28 @@ def run_data_pipeline():
             if full_html:
                 article['content'] = full_html
         article['content'] = clean_article_content(article.get('content', ''))
+    
+    # Filter out articles with empty content before expensive operations
+    articles_with_content = [
+        article for article in unique_new_articles
+        if article.get('content') and len(article.get('content', '').strip()) > 100
+    ]
+    
+    num_empty = len(unique_new_articles) - len(articles_with_content)
+    if num_empty > 0:
+        logging.warning(f"Filtered out {num_empty} articles with insufficient content (< 100 chars).")
+    
+    if not articles_with_content:
+        logging.info("No articles with sufficient content to analyze. Pipeline finished.")
+        return
 
-    # Step 4: Save the new, clean, RAW articles
-    logging.info(f"\n--- Saving {len(unique_new_articles)} new raw articles ---")
-    save_articles_to_blob(unique_new_articles, raw_container)
+    # Step 4: Save the new, clean, RAW articles (only those with content)
+    logging.info(f"\n--- Saving {len(articles_with_content)} new raw articles ---")
+    save_articles_to_blob(articles_with_content, raw_container)
 
-    # Step 5: Analyze the new articles
+    # Step 5: Analyze the new articles (only those with content)
     logging.info("\n--- Analyzing content with Azure AI Language ---")
-    analyzed_articles = analyze_articles(unique_new_articles)
+    analyzed_articles = analyze_articles(articles_with_content)
 
     # Step 6: Save the new ANALYZED articles
     logging.info(f"\n--- Saving {len(analyzed_articles)} new analyzed articles ---")

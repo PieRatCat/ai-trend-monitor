@@ -78,8 +78,8 @@ def update_processed_urls(new_urls: List[str], container_name: str = 'analyzed-a
         # Merge with new URLs and remove duplicates
         all_urls = list(set(existing_urls + new_urls))
         
-        # Save back to blob
-        json_data = json.dumps(all_urls, indent=2, ensure_ascii=False)
+        # Save back to blob (compact JSON for storage efficiency)
+        json_data = json.dumps(all_urls, ensure_ascii=False)
         blob_client.upload_blob(json_data.encode('utf-8'), overwrite=True)
         
         logging.info(f"Updated URL registry: added {len(new_urls)} new URLs (total: {len(all_urls)}).")
@@ -110,8 +110,8 @@ def save_articles_to_blob(articles: List[Dict[str, Any]], container_name: str) -
         container_client = blob_service_client.get_container_client(container_name)
         blob_client = container_client.get_blob_client(blob_name)
         
-        # Save articles directly (no append logic needed)
-        json_data = json.dumps(articles, indent=4, ensure_ascii=False)
+        # Save articles directly (compact JSON for storage efficiency)
+        json_data = json.dumps(articles, ensure_ascii=False)
         blob_client.upload_blob(json_data.encode('utf-8'), overwrite=True)
         
         logging.info(f"Successfully saved {len(articles)} articles to {blob_name} in container {container_name}.")
