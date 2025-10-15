@@ -19,7 +19,7 @@ This project implements a comprehensive AI-powered news monitoring system with t
 3. **Knowledge Mining** ✅ *COMPLETE*
    - Use Azure AI Search to index analyzed data
    - Create searchable knowledge base
-   - *Status*: 262 articles indexed with automated pipeline integration, keyword search operational
+   - *Status*: 150 articles indexed with automated pipeline integration, keyword search operational
 
 4. **Interactive Web Dashboard** 🚧 *IN PROGRESS*
    - Build Streamlit web application hosted on Azure
@@ -49,7 +49,7 @@ This project implements a comprehensive AI-powered news monitoring system with t
 8. **Update Registry** → Add new URLs to processed_urls.json
 9. **Index** → Upload to Azure AI Search for searchability
 
-Three containers: `raw-articles` (cleaned text), `analyzed-articles` (with AI insights + URL registry), and Azure AI Search index `ai-articles-index` (262 articles).
+Three containers: `raw-articles` (cleaned text), `analyzed-articles` (with AI insights + URL registry), and Azure AI Search index `ai-articles-index` (150 articles).
 
 ## Key Conventions
 
@@ -182,15 +182,14 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 **Phases Complete**: 3 of 6
 - ✅ Phase 1: Data Pipeline (Guardian API + 4 RSS feeds)
 - ✅ Phase 2: NLP Analysis (Azure AI Language)
-- ✅ Phase 3: Knowledge Mining (Azure AI Search with 262 articles)
+- ✅ Phase 3: Knowledge Mining (Azure AI Search with 150 articles)
 - 🚧 Phase 4: Streamlit Dashboard (Starting)
 - 📋 Phase 5: RAG Chatbot (Planned)
 - 📋 Phase 6: Automated Reports (Planned)
 
 **Key Metrics**:
-- 262 articles indexed in Azure AI Search
-- 149 URLs in registry
+- 150 articles indexed in Azure AI Search
+- 149 URLs in registry (1 article difference due to initial test article)
 - Free tier Search + Standard tier Language
-- 65 SEK (~$6 USD) total costs, 200 SEK budget alert
 
 **Next Milestone**: Build Streamlit interactive dashboard with search, filters, and visualizations (trend timeline, key topics, sentiment breakdown, source analysis)

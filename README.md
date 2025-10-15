@@ -22,7 +22,7 @@ An AI-powered news monitoring system that collects, analyzes, and indexes AI-rel
 - Batched processing (25 documents at a time)
 
 ### ✅ Phase 3: Knowledge Mining (COMPLETE)
-- Azure AI Search index with 262 articles
+- Azure AI Search index with 150 articles
 - Automated pipeline integration
 - Keyword search operational
 
@@ -62,7 +62,7 @@ Building Streamlit web application with:
 **Azure Services**:
 - **Blob Storage**: Pay-as-you-go (raw-articles, analyzed-articles containers)
 - **AI Language**: Standard tier (S) - Pay-per-transaction
-- **AI Search**: Free tier (F) - Keyword search, 262 articles indexed
+- **AI Search**: Free tier (F) - Keyword search, 150 articles indexed
 
 ## Key Features
 
@@ -77,10 +77,11 @@ Building Streamlit web application with:
 
 ## Current Statistics
 
-- **Total Articles Indexed**: 262
+- **Total Articles Indexed**: 150
 - **URLs in Registry**: 149
 - **Data Sources**: 5 (1 API + 4 RSS feeds)
-- **Azure Costs**: 65 SEK (~$6 USD) accumulated
+
+**Note**: The 1 article difference between registry (149) and index (150) is due to one test article uploaded during initial search index validation.
 
 ## Technology Stack
 
