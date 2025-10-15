@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from src.api_fetcher import fetch_guardian_api
 from src.rss_fetcher import fetch_rss_feeds
 from src.storage import get_processed_urls, update_processed_urls, save_articles_to_blob
-from src.utils import deduplicate_articles
 from src.scrapers import get_full_content
 from src.data_cleaner import clean_article_content
 from src.language_analyzer import analyze_articles
@@ -23,22 +22,15 @@ def run_data_pipeline():
     raw_container = 'raw-articles'
     analyzed_container = 'analyzed-articles'
 
-    # Step 1: Fetch, Scrape, and Clean new articles
-    logging.info("--- Starting: Fetch, Scrape, and Clean ---")
+    # Step 1: Fetch article metadata (titles, links, basic content)
+    logging.info("--- Starting: Fetch Articles ---")
     api_articles = fetch_guardian_api(API_SOURCES['guardian'], SEARCH_QUERY)
     rss_articles = fetch_rss_feeds(RSS_FEED_URLS)
     
-    for article in rss_articles:
-        if article.get('link'):
-            full_html = get_full_content(article.get('link', ''))
-            if full_html:
-                article['content'] = full_html
-    
     newly_collected_articles = api_articles + rss_articles
-    for article in newly_collected_articles:
-        article['content'] = clean_article_content(article.get('content', ''))
+    logging.info(f"Fetched {len(newly_collected_articles)} articles total.")
 
-    # Step 2: Deduplicate against processed URLs
+    # Step 2: Deduplicate against processed URLs BEFORE scraping
     logging.info("\n--- Deduplicating against processed URLs ---")
     processed_urls = get_processed_urls(analyzed_container)
     
@@ -54,21 +46,30 @@ def run_data_pipeline():
     if not unique_new_articles:
         logging.info("No unique new articles found. Pipeline finished.")
         return
-    logging.info(f"Found {len(unique_new_articles)} new unique articles.")
+    logging.info(f"Found {len(unique_new_articles)} new unique articles to process.")
+    
+    # Step 3: Scrape and Clean ONLY the new articles
+    logging.info(f"\n--- Scraping and cleaning {len(unique_new_articles)} new articles ---")
+    for article in unique_new_articles:
+        if article.get('link'):
+            full_html = get_full_content(article.get('link', ''))
+            if full_html:
+                article['content'] = full_html
+        article['content'] = clean_article_content(article.get('content', ''))
 
-    # Step 3: Save the new, clean, RAW articles
+    # Step 4: Save the new, clean, RAW articles
     logging.info(f"\n--- Saving {len(unique_new_articles)} new raw articles ---")
     save_articles_to_blob(unique_new_articles, raw_container)
 
-    # Step 4: Analyze the new articles
+    # Step 5: Analyze the new articles
     logging.info("\n--- Analyzing content with Azure AI Language ---")
     analyzed_articles = analyze_articles(unique_new_articles)
 
-    # Step 5: Save the new ANALYZED articles
+    # Step 6: Save the new ANALYZED articles
     logging.info(f"\n--- Saving {len(analyzed_articles)} new analyzed articles ---")
     save_articles_to_blob(analyzed_articles, analyzed_container)
     
-    # Step 6: Update the URL registry with newly processed articles
+    # Step 7: Update the URL registry with newly processed articles
     logging.info("\n--- Updating URL registry ---")
     new_urls = [article.get('link') for article in analyzed_articles if article.get('link')]
     update_processed_urls(new_urls, analyzed_container)

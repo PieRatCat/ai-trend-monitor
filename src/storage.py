@@ -31,7 +31,7 @@ def get_processed_urls(container_name: str = 'analyzed-articles') -> Set[str]:
         blob_client = container_client.get_blob_client(blob_name)
         
         try:
-            downloader = blob_client.download_blob(max_connections=1, encoding='UTF-8')
+            downloader = blob_client.download_blob(encoding='UTF-8')
             url_list = json.loads(downloader.readall())
             logging.info(f"Loaded {len(url_list)} processed URLs from registry.")
             return set(url_list)
@@ -70,7 +70,7 @@ def update_processed_urls(new_urls: List[str], container_name: str = 'analyzed-a
         
         # Load existing URLs
         try:
-            downloader = blob_client.download_blob(max_connections=1, encoding='UTF-8')
+            downloader = blob_client.download_blob(encoding='UTF-8')
             existing_urls = json.loads(downloader.readall())
         except Exception:
             existing_urls = []

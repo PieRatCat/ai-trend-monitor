@@ -2,17 +2,17 @@ import feedparser
 import logging
 from urllib.parse import urlparse
 from typing import List, Dict, Any
-from .scrapers import get_full_content
 
 def fetch_rss_feeds(urls: List[str]) -> List[Dict[str, Any]]:
     """
-    Fetches articles from a list of RSS feed URLs.
+    Fetches article metadata from a list of RSS feed URLs.
+    Does NOT scrape full content - that happens later after deduplication.
 
     Args:
         urls: A list of RSS feed URLs.
 
     Returns:
-        A list of standardized article dictionaries.
+        A list of standardized article dictionaries with metadata only.
     """
     logging.info("Fetching data from RSS feeds...")
     articles = []
@@ -23,21 +23,10 @@ def fetch_rss_feeds(urls: List[str]) -> List[Dict[str, Any]]:
             feed = feedparser.parse(url)
             if feed.entries:
                 for entry in feed.entries:
-                    # Check if a link exists to scrape
-                    link = entry.get('link')
-                    if link:
-                        try:
-                            full_content = get_full_content(link)
-                        except Exception as e:
-                            logging.warning(f"    -> Failed to scrape full content for {link}: {e}")
-                            full_content = entry.get('summary', '') or ''
-                    else:
-                        full_content = entry.get('summary', '') or ''
-
                     articles.append({
                         'title': entry.get('title', 'No Title'),
-                        'link': link,
-                        'content': full_content,
+                        'link': entry.get('link'),
+                        'content': entry.get('summary', '') or '',  # RSS summary only, not full scrape
                         'source': source_name,
                         'published_date': entry.get('published')
                     })

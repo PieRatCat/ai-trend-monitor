@@ -36,12 +36,13 @@ This project implements a comprehensive AI-powered news monitoring system with t
 ## Architecture & Data Flow
 
 **Pipeline Stages** (see `run_pipeline.py`):
-1. **Fetch** → Guardian API + RSS feeds (VentureBeat, Gizmodo, TechCrunch, Ars Technica)
-2. **Scrape** → Full article content extraction with site-specific selectors
-3. **Clean** → HTML entity decoding, Unicode normalization, tag stripping
-4. **Deduplicate** → Compare against all historical articles by link
+1. **Fetch** → Guardian API + RSS feeds (VentureBeat, Gizmodo, TechCrunch, Ars Technica) - metadata only
+2. **Deduplicate** → Check URLs against registry BEFORE expensive scraping
+3. **Scrape** → Full article content extraction (only for new articles) with site-specific selectors
+4. **Clean** → HTML entity decoding, Unicode normalization, tag stripping
 5. **Analyze** → Azure AI Language (sentiment, entities, key phrases) in batches of 25
-6. **Store** → Save to Azure Blob Storage in daily timestamped JSON files
+6. **Store** → Save to Azure Blob Storage in timestamped JSON files
+7. **Update Registry** → Add new URLs to processed_urls.json
 
 Two containers: `raw-articles` (cleaned text) and `analyzed-articles` (with AI insights).
 
@@ -93,8 +94,15 @@ All data sources are configured in `config/`:
 ## Development Workflow
 
 ### Environment Setup
+**Conda Environment**: This project uses the `trend-monitor` conda environment.
+
 ```bash
+# Activate the environment
+conda activate trend-monitor
+
+# Install dependencies (if needed)
 pip install -r requirements.txt
+
 # Create .env with:
 # GUARDIAN_API_KEY=...
 # AZURE_STORAGE_CONNECTION_STRING=...
