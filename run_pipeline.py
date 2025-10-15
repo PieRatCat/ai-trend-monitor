@@ -8,6 +8,7 @@ from src.storage import get_processed_urls, update_processed_urls, save_articles
 from src.scrapers import get_full_content
 from src.data_cleaner import clean_article_content
 from src.language_analyzer import analyze_articles
+from src.search_indexer import index_articles
 
 # Import configuration
 from config.api_sources import API_SOURCES
@@ -87,6 +88,11 @@ def run_data_pipeline():
     logging.info("\n--- Updating URL registry ---")
     new_urls = [article.get('link') for article in analyzed_articles if article.get('link')]
     update_processed_urls(new_urls, analyzed_container)
+    
+    # Step 8: Index articles in Azure AI Search
+    logging.info("\n--- Indexing articles in Azure AI Search ---")
+    indexed_count = index_articles(analyzed_articles)
+    logging.info(f"Indexed {indexed_count} articles in search index.")
     
     logging.info(f"\nPipeline Finished Successfully.")
 
