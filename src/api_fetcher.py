@@ -25,6 +25,7 @@ def fetch_guardian_api(source_details: Dict[str, Any], query_string: str) -> Lis
     params = {
         'api-key': api_key,
         'q': query_string,
+        'from-date': '2025-06-01',  # Only fetch articles from June 1, 2025 onwards
         # Removed 'show-fields': 'body' - will scrape content later like RSS feeds
         'page-size': 50  # Max articles per request
     }

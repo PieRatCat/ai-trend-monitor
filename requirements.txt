@@ -15,3 +15,4 @@ seaborn
 matplotlib
 scipy
 wordcloud
+openai
