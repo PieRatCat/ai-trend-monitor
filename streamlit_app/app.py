@@ -537,28 +537,39 @@ def generate_curated_content(section_type):
     try:
         chatbot = RAGChatbot()
         
+        # Get today's date for context
+        from datetime import datetime
+        today = datetime.now().strftime("%B %d, %Y")
+        
         if section_type == "releases":
-            query = """List 5 recent AI product releases or major announcements in HTML format.
+            query = f"""Today is {today}. List 5 recent AI product releases or major announcements that have ALREADY HAPPENED (not future events).
+            Only include products/features that have been officially launched, released, or announced.
+            
             Use this exact format for each item:
             <li><strong>Product/Company Name:</strong> One brief sentence description (max 15 words)</li>
             
-            Do NOT include:
-            - Article references or citations
-            - Any introductory text or headers
-            - The <ul> tags (just the <li> items)
+            IMPORTANT:
+            - Only include items that are ALREADY released/announced (past events)
+            - Do NOT include upcoming launches, planned releases, or future events
+            - Do NOT include article references or citations like [1], [2]
+            - Do NOT include any introductory text or headers
+            - Do NOT include the <ul> tags (just the <li> items)
             
             Start directly with the first <li> item."""
             temperature = 0.5  # More focused
         else:  # upcoming
-            query = """List 5 upcoming AI events or product releases in HTML format.
+            query = f"""Today is {today}. List 5 upcoming AI events or product releases that are scheduled for the FUTURE (not yet happened).
+            Only include events/products with future dates or that are explicitly described as "upcoming", "planned", "expected", or "coming soon".
+            
             Use this exact format for each item:
             <li><strong>Date/Timeframe:</strong> Event name and brief description (max 12 words total)</li>
             
-            Do NOT include:
-            - Long descriptions or details
-            - Article references or citations
-            - Any introductory text or headers
-            - The <ul> tags (just the <li> items)
+            IMPORTANT:
+            - Only include items that are FUTURE events (not yet happened)
+            - Do NOT include already released products or past announcements
+            - Do NOT include article references or citations like [1], [2]
+            - Do NOT include any introductory text or headers
+            - Do NOT include the <ul> tags (just the <li> items)
             
             Start directly with the first <li> item."""
             temperature = 0.7  # Slightly more creative for predictions
@@ -680,6 +691,21 @@ def show_curated_sections():
 def show_analytics_page():
     """Analytics and visualizations page"""
     st.header("AI News Analytics")
+    
+    # Apply custom CSS for smaller metrics across entire page
+    st.markdown("""
+    <style>
+    [data-testid="stMetricValue"] {
+        font-size: 1.2rem !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem !important;
+    }
+    [data-testid="stMetricDelta"] {
+        font-size: 0.75rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     with st.spinner("Loading analytics data..."):
         articles = get_all_articles()
@@ -892,6 +918,8 @@ def show_analytics_page():
             
             topic_articles['date'] = topic_articles['published_date'].apply(parse_flexible_date)
             topic_articles = topic_articles.dropna(subset=['date'])
+            # Ensure the date column is datetime type before using .dt accessor
+            topic_articles['date'] = pd.to_datetime(topic_articles['date'])
             topic_articles['date_only'] = topic_articles['date'].dt.date
         else:
             topic_articles = pd.DataFrame()
@@ -1114,21 +1142,6 @@ def show_analytics_page():
         
         plt.tight_layout()
         st.pyplot(fig)
-        
-        # Add custom CSS for smaller metrics
-        st.markdown("""
-        <style>
-        [data-testid="stMetricValue"] {
-            font-size: 1.2rem !important;
-        }
-        [data-testid="stMetricLabel"] {
-            font-size: 0.85rem !important;
-        }
-        [data-testid="stMetricDelta"] {
-            font-size: 0.75rem !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
         
         # Combined metrics in two rows
         col1, col2, col3, col4 = st.columns(4)
