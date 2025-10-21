@@ -1,12 +1,18 @@
-ipykernel
-requests
+# Core dependencies
 python-dotenv
+requests
+
+# Azure services
 azure-identity
 azure-storage-blob
 azure-ai-textanalytics
 azure-search-documents
+
+# Web scraping
 beautifulsoup4
 feedparser
+
+# Streamlit dashboard
 streamlit
 plotly
 pandas
@@ -15,4 +21,10 @@ seaborn
 matplotlib
 scipy
 wordcloud
+python-dateutil
+
+# AI/ML
 openai
+
+# Development only (not needed for production)
+# ipykernel

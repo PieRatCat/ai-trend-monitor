@@ -29,12 +29,21 @@ sys.path.insert(0, str(project_root))
 
 from src.rag_chatbot import RAGChatbot
 
-# Load environment variables
+# Load environment variables from .env file (local development)
 load_dotenv()
 
-# Claude.ai inspired color palette - warm beiges and dark greys
+# Helper function to get environment variables (supports both .env and Streamlit secrets)
+def get_env_var(key: str, default=None):
+    """Get environment variable from .env, Streamlit secrets, or Azure App Settings"""
+    # Try Streamlit secrets first (for Streamlit Cloud/Azure deployment)
+    if hasattr(st, 'secrets') and key in st.secrets:
+        return st.secrets[key]
+    # Fall back to environment variable (for local .env or Azure App Settings)
+    return os.getenv(key, default)
+
+# AI Trend Monitor custom color palette - warm beiges and dark greys
 # Color-blind accessible sentiment colors
-CLAUDE_COLORS = {
+AITREND_COLOURS = {
     'primary': '#C17D3D',      # Muted warm brown/tan
     'secondary': '#A0917A',    # Soft taupe
     'accent': '#5D5346',       # Rich dark brown
@@ -46,20 +55,20 @@ CLAUDE_COLORS = {
     'text': '#2D2D2D'          # Dark charcoal grey
 }
 
-# Set seaborn style with Claude-inspired theme
+# Set seaborn style with AI Trend Monitor theme
 sns.set_theme(style="whitegrid", palette=[
-    CLAUDE_COLORS['primary'], 
-    CLAUDE_COLORS['secondary'], 
-    CLAUDE_COLORS['accent'],
-    CLAUDE_COLORS['positive'],
-    CLAUDE_COLORS['neutral']
+    AITREND_COLOURS['primary'], 
+    AITREND_COLOURS['secondary'], 
+    AITREND_COLOURS['accent'],
+    AITREND_COLOURS['positive'],
+    AITREND_COLOURS['neutral']
 ])
 plt.rcParams['figure.facecolor'] = 'white'
 plt.rcParams['axes.facecolor'] = '#FEFEFE'
-plt.rcParams['text.color'] = CLAUDE_COLORS['text']
-plt.rcParams['axes.labelcolor'] = CLAUDE_COLORS['text']
-plt.rcParams['xtick.color'] = CLAUDE_COLORS['text']
-plt.rcParams['ytick.color'] = CLAUDE_COLORS['text']
+plt.rcParams['text.color'] = AITREND_COLOURS['text']
+plt.rcParams['axes.labelcolor'] = AITREND_COLOURS['text']
+plt.rcParams['xtick.color'] = AITREND_COLOURS['text']
+plt.rcParams['ytick.color'] = AITREND_COLOURS['text']
 
 # Page configuration
 st.set_page_config(
@@ -73,12 +82,20 @@ st.set_page_config(
 @st.cache_resource
 def get_search_client():
     """Initialize and cache the Azure Search client"""
-    search_endpoint = os.getenv('SEARCH_ENDPOINT')
-    search_key = os.getenv('SEARCH_KEY')
+    search_endpoint = get_env_var('SEARCH_ENDPOINT')
+    search_key = get_env_var('SEARCH_KEY')
     index_name = 'ai-articles-index'
     
     if not search_endpoint or not search_key:
-        st.error("⚠️ Azure Search credentials not found. Please check your .env file.")
+        st.error("⚠️ Azure Search credentials not found. Please check your .env file or Streamlit secrets.")
+        st.info("""
+        **Required configuration:**
+        - `SEARCH_ENDPOINT`: Your Azure AI Search endpoint URL
+        - `SEARCH_KEY`: Your Azure AI Search admin key
+        
+        **For local development:** Add these to `.env` file
+        **For Azure deployment:** Configure in App Service → Configuration → Application Settings
+        """)
         return None
     
     return SearchClient(
@@ -159,10 +176,10 @@ def display_article_card(article):
     
     # Sentiment color badges
     sentiment_colors = {
-        'positive': CLAUDE_COLORS['positive'],
-        'neutral': CLAUDE_COLORS['neutral'],
-        'negative': CLAUDE_COLORS['negative'],
-        'mixed': CLAUDE_COLORS['mixed']
+        'positive': AITREND_COLOURS['positive'],
+        'neutral': AITREND_COLOURS['neutral'],
+        'negative': AITREND_COLOURS['negative'],
+        'mixed': AITREND_COLOURS['mixed']
     }
     
     with st.container():
@@ -172,7 +189,7 @@ def display_article_card(article):
         with col1:
             st.markdown(f"**Source:** {article.get('source', 'Unknown')}")
         with col2:
-            sentiment_color = sentiment_colors.get(sentiment, CLAUDE_COLORS['neutral'])
+            sentiment_color = sentiment_colors.get(sentiment, AITREND_COLOURS['neutral'])
             st.markdown(
                 f"**Sentiment:** {sentiment_emoji.get(sentiment, '�')} "
                 f"<span style='color: {sentiment_color}; font-weight: 600;'>{sentiment.title()}</span>",
@@ -207,7 +224,7 @@ def display_article_card(article):
 def main():
     """Main application"""
     
-    # Custom CSS for Claude-inspired styling - beige and dark grey theme
+    # Custom CSS for AI Trend Monitor styling - beige and dark grey theme
     st.markdown("""
         <style>
         /* Import Libre Baskerville font */
@@ -455,10 +472,10 @@ def display_article_card_compact(article):
     }
     
     sentiment_colors = {
-        'positive': CLAUDE_COLORS['positive'],
-        'neutral': CLAUDE_COLORS['neutral'],
-        'negative': CLAUDE_COLORS['negative'],
-        'mixed': CLAUDE_COLORS['mixed']
+        'positive': AITREND_COLOURS['positive'],
+        'neutral': AITREND_COLOURS['neutral'],
+        'negative': AITREND_COLOURS['negative'],
+        'mixed': AITREND_COLOURS['mixed']
     }
     
     with st.container():
@@ -494,7 +511,7 @@ def display_article_card_compact(article):
             else:
                 st.markdown("*Date unknown*")
         with col3:
-            sentiment_color = sentiment_colors.get(sentiment, CLAUDE_COLORS['neutral'])
+            sentiment_color = sentiment_colors.get(sentiment, AITREND_COLOURS['neutral'])
             st.markdown(
                 f"<span style='color: {sentiment_color}; font-weight: 600;'>{sentiment_emoji.get(sentiment, '📰')} {sentiment.title()}</span>",
                 unsafe_allow_html=True
@@ -922,7 +939,7 @@ def show_analytics_page():
             fig, ax1 = plt.subplots(figsize=(10, 3.5))
             
             # Plot 1: Article count (left y-axis)
-            color_count = CLAUDE_COLORS['primary']
+            color_count = AITREND_COLOURS['primary']
             color_count_dark = '#A05A1F'  # Darker orange for better visibility
             
             # Line plot for all modes
@@ -930,10 +947,10 @@ def show_analytics_page():
             color=color_count, marker='o', linewidth=1.5, markersize=5,
             label=count_label, markeredgecolor='white', markeredgewidth=0.8)
             
-            ax1.set_xlabel('Publication Date', fontsize=9, color=CLAUDE_COLORS['text'], fontweight='bold')
+            ax1.set_xlabel('Publication Date', fontsize=9, color=AITREND_COLOURS['text'], fontweight='bold')
             ax1.set_ylabel(count_label, fontsize=9, color=color_count_dark, fontweight='bold')
             ax1.tick_params(axis='y', labelcolor=color_count_dark, colors=color_count_dark, labelsize=8)
-            ax1.tick_params(axis='x', rotation=45, colors=CLAUDE_COLORS['text'], labelsize=7)
+            ax1.tick_params(axis='x', rotation=45, colors=AITREND_COLOURS['text'], labelsize=7)
             
             # Set y-axis to start at 0 for article count and use whole numbers only
             ax1.set_ylim(bottom=0)
@@ -943,7 +960,7 @@ def show_analytics_page():
             
             # Plot 2: Net sentiment (right y-axis)
             ax2 = ax1.twinx()
-            color_sentiment = CLAUDE_COLORS['positive']  # Use teal color from pie chart
+            color_sentiment = AITREND_COLOURS['positive']  # Use teal color from pie chart
             color_sentiment_dark = '#3A6B7A'  # Darker teal for better visibility
             
             # Line plot for all modes
@@ -960,17 +977,17 @@ def show_analytics_page():
             ax2.set_ylim(-max_abs_sentiment * 1.1, max_abs_sentiment * 1.1)
             
             # Add horizontal line at y=0 for neutral sentiment
-            ax2.axhline(y=0, color=CLAUDE_COLORS['neutral'], linestyle='-', 
+            ax2.axhline(y=0, color=AITREND_COLOURS['neutral'], linestyle='-', 
                linewidth=1.2, alpha=0.6, label='Neutral (0)')
             
             # Add shaded regions for positive/negative
-            ax2.axhspan(0, max_abs_sentiment * 1.1, alpha=0.05, color=CLAUDE_COLORS['positive'], zorder=0)
-            ax2.axhspan(-max_abs_sentiment * 1.1, 0, alpha=0.05, color=CLAUDE_COLORS['negative'], zorder=0)
+            ax2.axhspan(0, max_abs_sentiment * 1.1, alpha=0.05, color=AITREND_COLOURS['positive'], zorder=0)
+            ax2.axhspan(-max_abs_sentiment * 1.1, 0, alpha=0.05, color=AITREND_COLOURS['negative'], zorder=0)
             
             # Title
             mode_text = viz_mode.replace(" Count", "").replace(" Aggregation", "")
             plt.title(f'Trend: "{selected_entity}" ({mode_text})', 
-             fontsize=11, color=CLAUDE_COLORS['text'], fontweight='bold', pad=20)
+             fontsize=11, color=AITREND_COLOURS['text'], fontweight='bold', pad=20)
             
             # Combined legend - positioned above the plot area
             lines = line1 + line2
@@ -1042,7 +1059,7 @@ def show_analytics_page():
         
         # Create histogram with gradient coloring
         # Create custom colormap from orange (negative) to teal (positive)
-        colors_gradient = [CLAUDE_COLORS['negative'], CLAUDE_COLORS['neutral'], CLAUDE_COLORS['positive']]
+        colors_gradient = [AITREND_COLOURS['negative'], AITREND_COLOURS['neutral'], AITREND_COLOURS['positive']]
         n_bins = 30
         cmap = mcolors.LinearSegmentedColormap.from_list('sentiment', colors_gradient, N=n_bins)
         
@@ -1062,15 +1079,15 @@ def show_analytics_page():
         ys = density(xs)
         # Scale KDE to match histogram height
         ys_scaled = ys * len(df['net_sentiment']) * (bins[1] - bins[0])
-        ax.plot(xs, ys_scaled, color=CLAUDE_COLORS['text'], linewidth=2, alpha=0.8)
+        ax.plot(xs, ys_scaled, color=AITREND_COLOURS['text'], linewidth=2, alpha=0.8)
         
         # Add vertical line at zero (neutral)
-        ax.axvline(x=0, color=CLAUDE_COLORS['text'], linestyle='--', 
+        ax.axvline(x=0, color=AITREND_COLOURS['text'], linestyle='--', 
                    linewidth=2, alpha=0.7, label='Neutral (0)')
         
         # Color the regions
-        ax.axvspan(-1, 0, alpha=0.05, color=CLAUDE_COLORS['negative'], zorder=0)
-        ax.axvspan(0, 1, alpha=0.05, color=CLAUDE_COLORS['positive'], zorder=0)
+        ax.axvspan(-1, 0, alpha=0.05, color=AITREND_COLOURS['negative'], zorder=0)
+        ax.axvspan(0, 1, alpha=0.05, color=AITREND_COLOURS['positive'], zorder=0)
         
         # Add labels for regions with darker colors
         color_negative_dark = '#A05A1F'  # Darker orange
@@ -1083,11 +1100,11 @@ def show_analytics_page():
                ha='center', va='top', fontweight='bold', alpha=1.0)
         
         ax.set_xlabel('Net Sentiment Score (Negative ← → Positive)', 
-                      fontsize=9, color=CLAUDE_COLORS['text'], fontweight='bold')
-        ax.set_ylabel('Number of Articles', fontsize=9, color=CLAUDE_COLORS['text'], fontweight='bold')
+                      fontsize=9, color=AITREND_COLOURS['text'], fontweight='bold')
+        ax.set_ylabel('Number of Articles', fontsize=9, color=AITREND_COLOURS['text'], fontweight='bold')
         ax.set_title('Distribution of Article Sentiment', fontsize=10, 
-                    color=CLAUDE_COLORS['text'], pad=10, fontweight='bold')
-        ax.tick_params(labelsize=7, colors=CLAUDE_COLORS['text'])
+                    color=AITREND_COLOURS['text'], pad=10, fontweight='bold')
+        ax.tick_params(labelsize=7, colors=AITREND_COLOURS['text'])
         ax.set_xlim(-1, 1)
         ax.legend(fontsize=7, framealpha=0.9)
         
@@ -1332,13 +1349,13 @@ def show_analytics_page():
             wordcloud = WordCloud(
                 width=600, 
                 height=300,
-                background_color=CLAUDE_COLORS['background'],
+                background_color=AITREND_COLOURS['background'],
                 color_func=dark_warm_color_func,
                 relative_scaling=0.5,
                 min_font_size=8,
                 max_words=100,
                 contour_width=0,
-                contour_color=CLAUDE_COLORS['accent']
+                contour_color=AITREND_COLOURS['accent']
             ).generate_from_frequencies(entity_counts)
             
             # Display word cloud with adjusted figure size
@@ -1585,8 +1602,8 @@ def show_chatbot_page():
             with st.container():
                 st.markdown(f"""
                 <div style="background-color: #F5F3EF; padding: 1rem; border-radius: 8px; 
-                            margin: 0.5rem 0; border-left: 4px solid {CLAUDE_COLORS['primary']}; 
-                            color: {CLAUDE_COLORS['text']};">
+                            margin: 0.5rem 0; border-left: 4px solid {AITREND_COLOURS['primary']}; 
+                            color: {AITREND_COLOURS['text']};">
                     <strong>You:</strong><br>
                     {message["content"]}
                 </div>
@@ -1595,8 +1612,8 @@ def show_chatbot_page():
             with st.container():
                 st.markdown(f"""
                 <div style="background-color: #FEFEFE; padding: 1rem; border-radius: 8px; 
-                            margin: 0.5rem 0; border-left: 4px solid {CLAUDE_COLORS['positive']}; 
-                            color: {CLAUDE_COLORS['text']};">
+                            margin: 0.5rem 0; border-left: 4px solid {AITREND_COLOURS['positive']}; 
+                            color: {AITREND_COLOURS['text']};">
                     <strong>Assistant:</strong><br>
                     {message["content"]}
                 </div>
@@ -1609,9 +1626,9 @@ def show_chatbot_page():
                         formatted_date = format_article_date(source['date'])
                         st.markdown(f"""
                         <div style="background-color: #F5F3EF; padding: 0.5rem 0.75rem; border-radius: 6px; 
-                                    margin: 0.3rem 0; border-left: 3px solid {CLAUDE_COLORS['secondary']}; 
+                                    margin: 0.3rem 0; border-left: 3px solid {AITREND_COLOURS['secondary']}; 
                                     font-size: 0.85rem;">
-                            <strong>[{i}]</strong> <a href="{source['link']}" target="_blank" style="color: {CLAUDE_COLORS['accent']}; text-decoration: none; font-weight: 600;">{source['title']}</a><br>
+                            <strong>[{i}]</strong> <a href="{source['link']}" target="_blank" style="color: {AITREND_COLOURS['accent']}; text-decoration: none; font-weight: 600;">{source['title']}</a><br>
                             <span style="color: #666;">{source['source']} • {formatted_date}</span>
                         </div>
                         """, unsafe_allow_html=True)

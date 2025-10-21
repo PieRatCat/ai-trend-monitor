@@ -24,6 +24,25 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
+def get_env_var(key: str) -> str:
+    """
+    Get environment variable from .env or system environment
+    
+    Args:
+        key: Environment variable name
+        
+    Returns:
+        Environment variable value
+        
+    Raises:
+        KeyError: If variable is not found
+    """
+    value = os.getenv(key)
+    if value is None:
+        raise KeyError(f"{key} not found in environment variables")
+    return value
+
+
 class RAGChatbot:
     """RAG-powered chatbot for querying AI news articles"""
     
@@ -40,7 +59,7 @@ class RAGChatbot:
         try:
             self.llm_client = OpenAI(
                 base_url="https://models.github.ai/inference",
-                api_key=os.environ["GITHUB_TOKEN"],
+                api_key=get_env_var("GITHUB_TOKEN"),
             )
             logger.info("GitHub Models client initialized successfully")
         except KeyError:
@@ -50,9 +69,9 @@ class RAGChatbot:
         # Initialize Azure AI Search client
         try:
             self.search_client = SearchClient(
-                endpoint=os.environ["SEARCH_ENDPOINT"],
+                endpoint=get_env_var("SEARCH_ENDPOINT"),
                 index_name="ai-articles-index",
-                credential=AzureKeyCredential(os.environ["SEARCH_KEY"])
+                credential=AzureKeyCredential(get_env_var("SEARCH_KEY"))
             )
             logger.info("Azure AI Search client initialized successfully")
         except KeyError as e:

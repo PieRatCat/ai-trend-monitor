@@ -1,0 +1,15 @@
+# Streamlit Configuration
+# https://docs.streamlit.io/develop/api-reference/configuration/config.toml
+# AI Trend Monitor custom color scheme - warm beiges and dark greys
+
+[theme]
+primaryColor = "#C17D3D"  # Muted warm brown/tan
+backgroundColor = "#F5F3EF"  # Warm light beige (main background)
+secondaryBackgroundColor = "#E8E3D9"  # Slightly darker warm beige
+textColor = "#2D2D2D"  # Dark charcoal grey
+font = "sans serif"
+
+[server]
+headless = true
+port = 8501
+enableXsrfProtection = true

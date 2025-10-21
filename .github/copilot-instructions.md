@@ -262,7 +262,7 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 - Full-width priority chart for most important visualization
 - Balanced column ratios in lower rows (1.2:1 for row 2)
 - Consistent font sizing (minimum 16px for body text)
-- Professional color palette (Claude colors: teal, olive, orange, tan)
+- Professional color palette (`AITREND_COLOURS`: teal, tan, orange, warm beiges)
 - No emojis or misleading delta indicators
 
 ## Data Filtering Strategy
@@ -286,6 +286,43 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 - More accurate growth metrics
 - Better representation of current AI news landscape
 - Sidebar shows "Earliest Article: Jun 3, 2025"
+
+## Dashboard Theme & Styling Guide
+
+**Color Scheme**: `AITREND_COLOURS` (defined in `streamlit_app/app.py`)
+
+This is our custom professional color palette, optimized for accessibility and brand consistency:
+
+```python
+AITREND_COLOURS = {
+    'primary': '#C17D3D',      # Muted warm brown/tan - Primary brand
+    'secondary': '#A0917A',    # Soft taupe - Secondary accents
+    'accent': '#5D5346',       # Rich dark brown - Links/emphasis
+    'positive': '#5B8FA3',     # Muted teal/blue - Positive sentiment
+    'neutral': '#9C8E7A',      # Medium warm tan - Neutral sentiment
+    'negative': '#C17D3D',     # Warm amber/orange - Negative sentiment
+    'mixed': '#7B6B8F',        # Deeper purple - Mixed sentiment
+    'background': '#F5F3EF',   # Warm light beige - Backgrounds
+    'text': '#2D2D2D'          # Dark charcoal grey - Text
+}
+```
+
+**Key Principles**:
+- Warm beige/grey tones for professional aesthetic
+- Color-blind accessible (teal vs. orange for sentiment, not red/green)
+- High contrast for WCAG AA compliance
+- Consistent across all visualizations
+
+**Typography**:
+- **Primary**: Libre Baskerville (serif) for main headings
+- **Body**: System fallback (Georgia, serif)
+- **Minimum size**: 16px for readability
+
+**When creating new visualizations or UI components**:
+- Always use `AITREND_COLOURS` dictionary for color references
+- Never hardcode hex values directly
+- Maintain consistency with existing chart styles
+- Reference `project_summary.ipynb` section 2.4 for complete styling guide
 
 ## 🚨 NEXT SESSION PRIORITY - Responsive Design
 
