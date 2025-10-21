@@ -1,5 +1,5 @@
 # Azure Deployment Guide - AI Trend Monitor
-
+Not for publishing 
 This guide covers deploying the AI Trend Monitor Streamlit dashboard to Azure App Service.
 
 ## Prerequisites

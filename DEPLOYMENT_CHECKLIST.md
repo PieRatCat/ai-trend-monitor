@@ -1,5 +1,5 @@
 # Azure Deployment Checklist
-
+Not for publishing 
 Use this checklist to ensure your AI Trend Monitor Streamlit dashboard is ready for Azure deployment.
 
 ## ✅ Pre-Deployment Checklist

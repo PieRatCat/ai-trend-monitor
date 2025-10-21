@@ -37,3 +37,5 @@ utilities/
 # Streamlit secrets (keep config.toml but ignore secrets)
 streamlit_app/.streamlit/secrets.toml
 run_dashboard.py
+DEPLOYMENT.md
+DEPLOYMENT_CHECKLIST.md
