@@ -1,144 +1,211 @@
 # AI Trend Monitor
 
-**Status**: Phase 3 Complete (3 of 6 phases) - Beginning Phase 4  
-**Last Updated**: October 15, 2025
+**An intelligent news aggregation and analysis platform for AI trends**
+
+[![Python](https://img.shields.io/badge/Python-3.12.11-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red.svg)](https://streamlit.io/)
+[![Azure](https://img.shields.io/badge/Azure-Cloud-0078D4.svg)](https://azure.microsoft.com/)
+
+**Status**: Production Ready (5 of 6 phases complete)  
+**Last Updated**: October 21, 2025
 
 ---
 
 ## Overview
 
-An AI-powered news monitoring system that collects, analyzes, and indexes AI-related articles from multiple sources. The system leverages Azure cloud services for storage, natural language processing, and semantic search capabilities.
+AI Trend Monitor is a comprehensive news intelligence platform that automatically collects, analyzes, and visualizes AI-related news from multiple trusted sources. Built with Azure cloud services and powered by advanced NLP, it provides real-time insights into AI industry trends, sentiment patterns, and emerging topics through an interactive web dashboard and conversational AI interface.
 
-## Project Phases
+## Core Features
 
-### ✅ Phase 1: Data Pipeline Implementation (COMPLETE)
-- Multi-source data ingestion (Guardian API + 4 RSS feeds)
-- Azure Blob Storage integration
-- Automated content scraping and cleaning
+### 📰 Automated Data Collection
+- **Multi-source aggregation**: Guardian API + 4 RSS feeds (TechCrunch, VentureBeat, Ars Technica, Gizmodo)
+- **Smart deduplication**: URL-based tracking prevents redundant processing
+- **Intelligent scraping**: Site-specific content extraction with fallback strategies
+- **Date filtering**: Focused on recent trends (June 2025 onwards)
 
-### ✅ Phase 2: Advanced NLP Analysis (COMPLETE)
-- Azure AI Language integration
-- Sentiment analysis, entity recognition, key phrase extraction
-- Batched processing (25 documents at a time)
+### 🧠 Advanced NLP Analysis
+- **Sentiment analysis**: Positive, negative, neutral, and mixed sentiment classification with confidence scores
+- **Entity recognition**: Organizations, people, products, and technologies mentioned
+- **Key phrase extraction**: Automatic topic and theme identification
+- **Powered by**: Azure AI Language with batched processing for efficiency
 
-### ✅ Phase 3: Knowledge Mining (COMPLETE)
-- Azure AI Search index with 150 articles
-- Automated pipeline integration
-- Keyword search operational
+### 🔍 Semantic Search
+- **Indexed knowledge base**: 200+ articles searchable by keywords, entities, and phrases
+- **Multi-filter search**: Filter by source, sentiment, date range, and topics
+- **Fast retrieval**: Azure AI Search with keyword matching and ranking
 
-### 🚧 Phase 4: Interactive Web Dashboard (IN PROGRESS)
-Building Streamlit web application with:
-- Search interface with filters (source, sentiment, date range)
-- Trend timeline visualization
-- Key topics analysis
-- Sentiment breakdown charts
-- Source distribution analysis
-- Hosting on Azure App Service
+### 📊 Interactive Analytics Dashboard
+Built with Streamlit, fully responsive across all devices:
 
-### 📋 Phase 5: RAG-Powered Chatbot (PLANNED)
-- Azure OpenAI Service integration
-- Retrieval-Augmented Generation (RAG) pattern
-- Natural language queries grounded in knowledge base
+**News Page**
+- Curated recent developments and upcoming events
+- Article cards with sentiment indicators and key topics
+- Advanced search with multiple filters
+
+**Analytics Page**
+- **Topic Trend Timeline**: Interactive entity selection with temporal analysis
+- **Sentiment Distribution**: Histogram showing overall article sentiment spectrum
+- **Source Statistics**: Article count and sentiment breakdown by publication
+- **Word Cloud**: Visual representation of most-mentioned entities
+- **Top Topics**: Ranked list of trending themes
+
+**Chat Page** (RAG-Powered AI Assistant)
+- Natural language queries about AI trends
+- Grounded responses with article citations
 - Conversation history and context awareness
+- Powered by GPT-4.1-mini via GitHub Models
 
-### 📋 Phase 6: Automated Weekly Reports (PLANNED)
-- Azure Function triggered weekly
-- Automated trend analysis and insights
-- Report generation with Azure OpenAI
-- Distribution via email or web hosting
+**About Page**
+- Project information and technology stack
 
-## System Architecture
+### 🎨 Professional Design
+- Custom color palette (warm beiges, teal, orange)
+- Responsive design (desktop, laptop, tablet, mobile)
+- Accessibility-focused (color-blind safe, high contrast)
 
-**Pipeline Stages**:
-1. **Fetch** → Guardian API + RSS feeds (metadata only)
-2. **Deduplicate** → Check URLs against registry
-3. **Scrape** → Full article content extraction
-4. **Clean** → HTML processing and text normalization
-5. **Filter** → Remove insufficient content (<100 chars)
-6. **Analyze** → Azure AI Language (sentiment, entities, key phrases)
-7. **Store** → Save to Azure Blob Storage + Update URL registry
-8. **Index** → Upload to Azure AI Search
-
-**Azure Services**:
-- **Blob Storage**: Pay-as-you-go (raw-articles, analyzed-articles containers)
-- **AI Language**: Standard tier (S) - Pay-per-transaction
-- **AI Search**: Free tier (F) - Keyword search, 150 articles indexed
-
-## Key Features
-
-- ✅ Multi-source data collection (5 sources)
-- ✅ URL deduplication preventing redundant processing
-- ✅ Site-specific web scraping with fallback selectors
-- ✅ Azure AI Language NLP analysis
-- ✅ Compact blob storage (30-40% space savings)
-- ✅ Automated search index synchronization
-- ✅ Comprehensive error handling and logging
-- ✅ Cost-optimized operations
-
-## Current Statistics
-
-- **Total Articles Indexed**: 149
-- **URLs in Registry**: 149
-- **Data Sources**: 5 (1 API + 4 RSS feeds)
+### 🔮 Coming Soon
+- **Automated Weekly Reports**: AI-generated trend summaries and insights delivered via email
 
 ## Technology Stack
 
-**Development**:
-- Python 3.12.11 (trend-monitor conda environment)
-- Visual Studio Code with auto-environment activation
+**Cloud Infrastructure**
+- Azure Blob Storage (data persistence)
+- Azure AI Language (NLP analysis)
+- Azure AI Search (semantic search index)
 
-**Libraries**:
-- `azure-storage-blob` (12.26.0) - Blob storage operations
-- `azure-ai-textanalytics` - Azure AI Language integration
-- `azure-search-documents` (11.5.3) - Search index management
-- `requests`, `feedparser`, `beautifulsoup4` - Data collection
-- `python-dotenv` - Environment configuration
+**Backend**
+- Python 3.12.11
+- Beautiful Soup (web scraping)
+- Feedparser (RSS parsing)
 
-## Getting Started
+**AI & ML**
+- OpenAI GPT-4.1-mini (conversational AI)
+- GitHub Models (development)
+- Azure AI Language (sentiment, entities, key phrases)
+
+**Frontend**
+- Streamlit (web dashboard)
+- Plotly & Matplotlib (data visualization)
+- Custom responsive CSS
+
+## Quick Start
 
 ### Prerequisites
 - Python 3.12.11
-- Conda environment: `trend-monitor`
-- Azure account with Blob Storage, AI Language, and AI Search services
-
-### Environment Setup
-Create `.env` file with:
-```
-GUARDIAN_API_KEY=your_key_here
-AZURE_STORAGE_CONNECTION_STRING=your_connection_string
-LANGUAGE_KEY=your_language_key
-LANGUAGE_ENDPOINT=your_language_endpoint
-SEARCH_ENDPOINT=your_search_endpoint
-SEARCH_KEY=your_search_key
-```
+- Conda environment manager
+- Azure account (Blob Storage, AI Language, AI Search)
+- GitHub Personal Access Token (for chatbot)
 
 ### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/PieRatCat/ai-trend-monitor.git
+   cd ai-trend-monitor
+   ```
+
+2. **Set up conda environment**
+   ```bash
+   conda create -n trend-monitor python=3.12.11
+   conda activate trend-monitor
+   pip install -r requirements.txt
+   ```
+
+3. **Configure environment variables**
+   
+   Create `.env` file:
+   ```
+   GUARDIAN_API_KEY=your_guardian_api_key
+   AZURE_STORAGE_CONNECTION_STRING=your_connection_string
+   LANGUAGE_KEY=your_azure_language_key
+   LANGUAGE_ENDPOINT=your_azure_language_endpoint
+   SEARCH_ENDPOINT=your_azure_search_endpoint
+   SEARCH_KEY=your_azure_search_key
+   GITHUB_TOKEN=your_github_personal_access_token
+   ```
+
+### Usage
+
+**Run the data pipeline** (collect and analyze articles):
 ```bash
 conda activate trend-monitor
-pip install -r requirements.txt
+python run_pipeline.py
 ```
 
-### Running the Pipeline
+**Launch the dashboard**:
 ```bash
-python run_pipeline.py
+conda activate trend-monitor
+streamlit run streamlit_app/app.py
+```
+
+Then open your browser to `http://localhost:8501`
+
+## Project Structure
+
+```
+ai-trend-monitor/
+├── config/                  # Data source configurations
+│   ├── api_sources.py      # Guardian API settings
+│   ├── rss_sources.py      # RSS feed URLs
+│   └── query.py            # Search query terms
+├── src/                     # Core pipeline modules
+│   ├── api_fetcher.py      # Guardian API integration
+│   ├── rss_fetcher.py      # RSS feed parsing
+│   ├── scrapers.py         # Web scraping with fallbacks
+│   ├── data_cleaner.py     # HTML processing
+│   ├── language_analyzer.py # Azure AI Language integration
+│   ├── storage.py          # Azure Blob Storage operations
+│   ├── search_indexer.py   # Azure AI Search indexing
+│   └── rag_chatbot.py      # RAG conversational AI
+├── streamlit_app/          # Web dashboard
+│   ├── .streamlit/         # Streamlit configuration
+│   │   └── config.toml     # Theme and server settings
+│   ├── app.py              # Main dashboard application
+│   └── styles.css          # Responsive design styles
+├── run_pipeline.py         # Main orchestration script
+└── requirements.txt        # Python dependencies
 ```
 
 ## Documentation
 
-See `project_summary.ipynb` for comprehensive project documentation including:
-- Detailed implementation timeline
-- Performance optimizations
-- Architecture decisions
-- Testing and validation results
-- Lessons learned
-- Next steps and planning
+Comprehensive project documentation available in: (coming soon)
 
-## Next Milestone
 
-**Phase 4 Development**: Building Streamlit interactive dashboard with search, filters, and trend visualizations. Deployment to Azure App Service for public access.
+## Architecture Highlights
+
+**Data Pipeline**
+- Fetch → Deduplicate → Scrape → Clean → Analyze → Store → Index
+- Automated URL registry prevents redundant processing
+- Batched NLP analysis (25 documents at a time)
+- Compact JSON storage (30-40% space savings)
+
+**RAG Chatbot**
+- Retrieval-Augmented Generation for grounded responses
+- Temporal query detection with smart date filtering
+- Token budget management (prevents API errors)
+- Context-aware conversation history
+
+**Cost Optimization**
+- Early deduplication saves ~2 minutes per run
+- Content filtering prevents wasted API calls
+- Free tier Azure AI Search (sufficient for 10,000+ articles)
+- Standard tier Azure AI Language (pay-per-use, optimized batching)
+
+## License
+
+This project is available for educational and demonstration purposes.
+
+## Author
+
+**Amanda Sumner**  
+[GitHub](https://github.com/PieRatCat) | [Project Repository](https://github.com/PieRatCat/ai-trend-monitor)
+
+## Acknowledgments
+
+- Azure AI Services for NLP capabilities
+- OpenAI for GPT-4.1-mini model access via GitHub Models
+- GitHub Copilot for AI-assisted development and code optimization
+- The Guardian, TechCrunch, VentureBeat, Ars Technica, and Gizmodo for news content
+- Streamlit for rapid dashboard development
 
 ---
-
-**Project**: AI Trend Monitor  
-**Author**: Amanda Sumner  
-**Repository**: [PieRatCat/ai-trend-monitor](https://github.com/PieRatCat/ai-trend-monitor)
