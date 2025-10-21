@@ -475,10 +475,10 @@ Focus on recently released products and announcements, not future events."""
         else:  # upcoming
             query = """What upcoming AI events, product releases, or anticipated launches are mentioned in the articles?
 
-List 5 items in this format:
-<li><strong>Date/Timeframe:</strong> Event or release name</li>
+Provide exactly 5 items using this HTML format only (no numbered lists, no markdown):
+<li><strong>Date/Timeframe:</strong> Event or release name and brief description</li>
 
-Focus on future events and planned releases."""
+Focus on future events and planned releases. Use only bullet points in the format shown above."""
             temperature = 0.7
         
         result = chatbot.chat(query, top_k=15, temperature=temperature)
@@ -1198,22 +1198,21 @@ def show_analytics_page():
         else:
             st.markdown("*Organizations, people, products, and locations mentioned in articles*")
         
-        # Custom color function for darker warm tones (avoiding light yellows)
-        def dark_warm_color_func(word, font_size, position, orientation, random_state=None, **kwargs):
+        # Custom color function using AITREND_COLOURS palette (teal, grey, orange)
+        def aitrend_color_func(word, font_size, position, orientation, random_state=None, **kwargs):
             import random
-            # Generate colors in darker warm brown/orange/tan range
-            # Using darker, more saturated colors
+            # Use colors from the dashboard palette with variations
             colors = [
-                '#8B5A3C',  # Sienna brown
-                '#A0522D',  # Sienna
-                '#6B4423',  # Dark brown
-                '#8B4513',  # Saddle brown
-                '#704214',  # Sepia
-                '#7B3F00',  # Chocolate brown
-                '#654321',  # Dark brown
-                '#8B6914',  # Dark goldenrod
-                '#996515',  # Brown
-                '#6B5344',  # Dark taupe
+                AITREND_COLOURS['primary'],    # #C17D3D - Muted warm brown/tan
+                AITREND_COLOURS['secondary'],  # #A0917A - Soft taupe
+                AITREND_COLOURS['accent'],     # #5D5346 - Rich dark brown
+                AITREND_COLOURS['positive'],   # #5B8FA3 - Muted teal/blue
+                AITREND_COLOURS['neutral'],    # #9C8E7A - Medium warm tan
+                AITREND_COLOURS['negative'],   # #C17D3D - Warm amber/orange (same as primary)
+                '#7B9DA8',  # Lighter teal variation
+                '#8B7A6B',  # Grey-brown variation
+                '#A68A5F',  # Tan variation
+                '#6B8B95',  # Steel teal
             ]
             return random.choice(colors)
         
@@ -1222,7 +1221,7 @@ def show_analytics_page():
             width=800, 
             height=400,
             background_color=AITREND_COLOURS['background'],
-            color_func=dark_warm_color_func,
+            color_func=aitrend_color_func,
             relative_scaling=0.5,
             min_font_size=10,
             max_words=100,

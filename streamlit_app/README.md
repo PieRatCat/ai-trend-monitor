@@ -58,8 +58,6 @@ The app will open in your browser at `http://localhost:8501`
 
 ## Azure Deployment
 
-See [`../DEPLOYMENT.md`](../DEPLOYMENT.md) for complete Azure deployment guide.
-
 ### Quick Deploy Summary
 
 1. Create Azure App Service (Python 3.12)
@@ -87,7 +85,7 @@ Current theme: **AITREND_COLOURS** - Warm beiges and dark greys with color-blind
 
 ```
 streamlit_app/
-├── app.py                      # Main Streamlit application (1,690 lines)
+├── app.py                      # Main Streamlit application
 ├── .streamlit/
 │   ├── config.toml             # Theme and server configuration
 │   └── secrets.toml.example    # Example secrets file
@@ -107,10 +105,3 @@ streamlit_app/
 ### Dashboard loads slowly
 - Clear cache: Top-right menu → "Clear cache"
 - Upgrade Azure Search tier for better performance
-
-## Related Documentation
-
-- [Main README](../README.md)
-- [Azure Deployment Guide](../DEPLOYMENT.md)
-- [Project Summary](../project_summary.ipynb)
-- [Copilot Instructions](../.github/copilot-instructions.md)

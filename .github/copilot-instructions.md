@@ -306,19 +306,15 @@ articles = fetch_rss_feeds(RSS_FEED_URLS)
 
 This is our custom professional color palette, optimized for accessibility and brand consistency:
 
-```python
-AITREND_COLOURS = {
-    'primary': '#C17D3D',      # Muted warm brown/tan - Primary brand
-    'secondary': '#A0917A',    # Soft taupe - Secondary accents
-    'accent': '#5D5346',       # Rich dark brown - Links/emphasis
-    'positive': '#5B8FA3',     # Muted teal/blue - Positive sentiment
-    'neutral': '#9C8E7A',      # Medium warm tan - Neutral sentiment
-    'negative': '#C17D3D',     # Warm amber/orange - Negative sentiment
-    'mixed': '#7B6B8F',        # Deeper purple - Mixed sentiment
-    'background': '#F5F3EF',   # Warm light beige - Backgrounds
-    'text': '#2D2D2D'          # Dark charcoal grey - Text
-}
-```
+- **Primary**: Muted warm brown/tan for primary brand elements
+- **Secondary**: Soft taupe for secondary accents
+- **Accent**: Rich dark brown for links and emphasis
+- **Positive**: Muted teal/blue for positive sentiment (color-blind safe)
+- **Neutral**: Medium warm tan for neutral sentiment
+- **Negative**: Warm amber/orange for negative sentiment (color-blind safe)
+- **Mixed**: Deeper purple for mixed sentiment
+- **Background**: Warm light beige for page backgrounds
+- **Text**: Dark charcoal grey for primary text
 
 **Key Principles**:
 - Warm beige/grey tones for professional aesthetic
