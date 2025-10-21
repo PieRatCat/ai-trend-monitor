@@ -36,8 +36,12 @@ load_dotenv()
 def get_env_var(key: str, default=None):
     """Get environment variable from .env, Streamlit secrets, or Azure App Settings"""
     # Try Streamlit secrets first (for Streamlit Cloud/Azure deployment)
-    if hasattr(st, 'secrets') and key in st.secrets:
-        return st.secrets[key]
+    try:
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        # st.secrets may raise an error if secrets.toml doesn't exist
+        pass
     # Fall back to environment variable (for local .env or Azure App Settings)
     return os.getenv(key, default)
 
@@ -1610,12 +1614,14 @@ def show_chatbot_page():
                 """, unsafe_allow_html=True)
         else:
             with st.container():
+                # Escape the content to prevent markdown issues
+                escaped_content = message["content"].replace("$", r"\$")
                 st.markdown(f"""
                 <div style="background-color: #FEFEFE; padding: 1rem; border-radius: 8px; 
                             margin: 0.5rem 0; border-left: 4px solid {AITREND_COLOURS['positive']}; 
                             color: {AITREND_COLOURS['text']};">
                     <strong>Assistant:</strong><br>
-                    {message["content"]}
+                    {escaped_content}
                 </div>
                 """, unsafe_allow_html=True)
                 

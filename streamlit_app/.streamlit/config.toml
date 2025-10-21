@@ -3,6 +3,7 @@
 # AI Trend Monitor custom color scheme - warm beiges and dark greys
 
 [theme]
+base = "light"  # Force light theme only (no dark mode)
 primaryColor = "#C17D3D"  # Muted warm brown/tan
 backgroundColor = "#F5F3EF"  # Warm light beige (main background)
 secondaryBackgroundColor = "#E8E3D9"  # Slightly darker warm beige
