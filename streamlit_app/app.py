@@ -542,36 +542,42 @@ def generate_curated_content(section_type):
         today = datetime.now().strftime("%B %d, %Y")
         
         if section_type == "releases":
-            query = f"""Today is {today}. List 5 recent AI product releases or major announcements that have ALREADY HAPPENED (not future events).
-            Only include products/features that have been officially launched, released, or announced.
-            
-            Use this exact format for each item:
-            <li><strong>Product/Company Name:</strong> One brief sentence description (max 15 words)</li>
-            
-            IMPORTANT:
-            - Only include items that are ALREADY released/announced (past events)
-            - Do NOT include upcoming launches, planned releases, or future events
-            - Do NOT include article references or citations like [1], [2]
-            - Do NOT include any introductory text or headers
-            - Do NOT include the <ul> tags (just the <li> items)
-            
-            Start directly with the first <li> item."""
+            # Use a simpler search query to retrieve articles, then instruct formatting
+            search_query = "AI product releases announcements new models features"
+            query = f"""Search query: {search_query}
+
+Today is {today}. Based on the articles provided, list 5 recent AI product releases or major announcements that have ALREADY HAPPENED (not future events).
+
+Use this exact format for each item:
+<li><strong>Product/Company Name:</strong> One brief sentence description (max 15 words)</li>
+
+IMPORTANT:
+- Only include items that are ALREADY released/announced (past events)
+- Do NOT include upcoming launches, planned releases, or future events
+- Do NOT include article references or citations like [1], [2]
+- Do NOT include any introductory text or headers
+- Do NOT include the <ul> tags (just the <li> items)
+
+Start directly with the first <li> item."""
             temperature = 0.5  # More focused
         else:  # upcoming
-            query = f"""Today is {today}. List 5 upcoming AI events or product releases that are scheduled for the FUTURE (not yet happened).
-            Only include events/products with future dates or that are explicitly described as "upcoming", "planned", "expected", or "coming soon".
-            
-            Use this exact format for each item:
-            <li><strong>Date/Timeframe:</strong> Event name and brief description (max 12 words total)</li>
-            
-            IMPORTANT:
-            - Only include items that are FUTURE events (not yet happened)
-            - Do NOT include already released products or past announcements
-            - Do NOT include article references or citations like [1], [2]
-            - Do NOT include any introductory text or headers
-            - Do NOT include the <ul> tags (just the <li> items)
-            
-            Start directly with the first <li> item."""
+            # Use a simpler search query to retrieve articles, then instruct formatting
+            search_query = "AI upcoming planned future releases events expected coming soon"
+            query = f"""Search query: {search_query}
+
+Today is {today}. Based on the articles provided, list 5 upcoming AI events or product releases that are scheduled for the FUTURE (not yet happened).
+
+Use this exact format for each item:
+<li><strong>Date/Timeframe:</strong> Event name and brief description (max 12 words total)</li>
+
+IMPORTANT:
+- Only include items that are FUTURE events (not yet happened)
+- Do NOT include already released products or past announcements
+- Do NOT include article references or citations like [1], [2]
+- Do NOT include any introductory text or headers
+- Do NOT include the <ul> tags (just the <li> items)
+
+Start directly with the first <li> item."""
             temperature = 0.7  # Slightly more creative for predictions
         
         result = chatbot.chat(query, top_k=10, temperature=temperature)
@@ -907,19 +913,23 @@ def show_analytics_page():
             # This handles both RFC and ISO formats properly
             
             def parse_flexible_date(date_str):
-                """Parse date string in various formats"""
+                """Parse date string in various formats, returning timezone-naive datetime"""
                 if not date_str:
                     return None
                 try:
                     # Use dateutil parser which handles multiple formats
-                    return date_parser.parse(date_str)
+                    parsed = date_parser.parse(date_str)
+                    # Remove timezone info to make it timezone-naive for pandas
+                    if parsed.tzinfo is not None:
+                        parsed = parsed.replace(tzinfo=None)
+                    return parsed
                 except:
                     return None
             
             topic_articles['date'] = topic_articles['published_date'].apply(parse_flexible_date)
             topic_articles = topic_articles.dropna(subset=['date'])
             # Ensure the date column is datetime type before using .dt accessor
-            topic_articles['date'] = pd.to_datetime(topic_articles['date'])
+            topic_articles['date'] = pd.to_datetime(topic_articles['date'], utc=False)
             topic_articles['date_only'] = topic_articles['date'].dt.date
         else:
             topic_articles = pd.DataFrame()
