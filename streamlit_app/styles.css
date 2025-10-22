@@ -7,7 +7,7 @@
 
 /* Main title - scales with viewport */
 h1 {
-    color: #2D2D2D !important;
+    color: #5D5346 !important;
     font-weight: 700 !important;
     font-family: 'Libre Baskerville', 'Georgia', serif !important;
     letter-spacing: -0.5px;
@@ -50,9 +50,18 @@ p, div, span, li {
 
 /* Main content area - max width for readability */
 .main .block-container {
-    max-width: 100% !important;
+    max-width: 1600px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
     padding-left: clamp(1rem, 3vw, 3rem) !important;
     padding-right: clamp(1rem, 3vw, 3rem) !important;
+}
+
+/* On smaller screens, use full width */
+@media screen and (max-width: 1650px) {
+    .main .block-container {
+        max-width: 100% !important;
+    }
 }
 
 /* ============================================
@@ -132,15 +141,34 @@ div[data-testid="stMetric"] {
     min-width: 250px !important;
 }
 
+/* Sidebar title - lighter color to match headers */
+[data-testid="stSidebar"] h1 {
+    color: #5D5346 !important;
+}
+
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
     font-size: clamp(0.85rem, 1.5vw, 0.95rem) !important;
 }
 
+/* ============================================
+   NAVIGATION STYLING
+   ============================================ */
+
+/* Style the navigation header background */
+.stAppHeader {
+    background-color: #E8E3D9;
+}
+
+/* Align navigation with main content container */
+[data-testid="stHeader"] {
+    padding-left: clamp(1rem, 3vw, 3rem) !important;
+}
+
 /* Fix blank space when sidebar is collapsed - ensure main content expands */
 .main .block-container {
-    max-width: 100% !important;
-    padding-left: 5rem !important;
-    padding-right: 5rem !important;
+    max-width: 90% !important;
+        padding-left: 5rem !important;
+        padding-right: 5rem !important;
 }
 
 /* Adjust padding when sidebar is present/collapsed */
@@ -242,6 +270,24 @@ input, textarea, select, [data-baseweb="select"] {
 
 .topics-table tr:hover {
     background-color: #F5F3EF;
+}
+
+/* Dataframe styling - increase font size */
+[data-testid="stDataFrame"] {
+    font-size: 15px !important;
+}
+
+[data-testid="stDataFrame"] table {
+    font-size: 15px !important;
+}
+
+[data-testid="stDataFrame"] th {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stDataFrame"] td {
+    font-size: 15px !important;
 }
 
 .rank-col {

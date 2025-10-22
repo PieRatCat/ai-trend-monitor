@@ -78,15 +78,18 @@ class RAGChatbot:
             logger.error(f"Azure Search credentials missing: {e}")
             raise
     
-    def _detect_time_range(self, query: str) -> Optional[datetime]:
+    def _detect_time_range(self, query: str):
         """
-        Detect temporal phrases in the query and return a cutoff date
+        Detect temporal phrases in the query and return a date range
         
         Args:
             query: User's search query
             
         Returns:
-            Datetime object for the cutoff, or None if no temporal phrase detected
+            Tuple of (start_date, end_date) where:
+            - start_date: Earliest date to include (inclusive)
+            - end_date: Latest date to include (exclusive), or None for open-ended
+            Or None if no temporal phrase detected
         """
         from datetime import datetime, timedelta
         import re
@@ -94,28 +97,191 @@ class RAGChatbot:
         query_lower = query.lower()
         now = datetime.now()
         
-        # Patterns for temporal queries
+        # Skip temporal detection if query contains date context phrases
+        if 'today is' in query_lower or 'today\'s date is' in query_lower:
+            # This is just providing date context, not asking for today's articles
+            logger.info("Skipping temporal detection - query contains date context phrase")
+            return None
+        
+        # Current year and month for relative dates
+        current_year = now.year
+        current_month = now.month
+        
+        # Patterns for temporal queries (ordered from specific to general)
         temporal_patterns = {
-            r'last 24 hours?|past 24 hours?|today': timedelta(days=1),
+            # Specific time periods
+            r'last 24 hours?|past 24 hours?|today|in the last day': timedelta(days=1),
             r'last 48 hours?|past 48 hours?': timedelta(days=2),
-            r'last (\d+) days?|past (\d+) days?': None,  # Extract number
-            r'this week|last week': timedelta(days=7),
-            r'this month|last month': timedelta(days=30),
+            r'last (\d+) days?|past (\d+) days?|in the (?:last|past) (\d+) days?': None,  # Extract number
+            
+            # Week-based
+            r'(?:in the )?past weeks?': timedelta(days=7),
+            r'(?:in the )?last weeks?': None,  # Special: previous calendar week
+            r'(?:in the )?next weeks?': None,  # Special: next calendar week
+            r'this weeks?': None,  # Special: current week
+            r'last (\d+) weeks?|past (\d+) weeks?': None,  # Extract number * 7
+            
+            # Month-based  
+            r'(?:in the )?past months?': timedelta(days=30),
+            r'(?:in the )?last months?': None,  # Special: previous calendar month
+            r'(?:in the )?next months?': None,  # Special: next calendar month
+            r'this months?': None,  # Special: current month
+            r'last (\d+) months?|past (\d+) months?': None,  # Extract number * 30
+            
+            # Year-based
+            r'(?:before|by|until) (?:the )?end of (?:this )?year': None,  # Until end of year
+            r'(?:in |during )?this year|in (\d{4})': None,  # Specific year
+            r'(?:before|until|by) (\d{4})': None,  # Before specific year
+            
+            # Recent/latest
+            r'recent(?:ly)?|latest|newest': timedelta(days=30),
         }
         
         for pattern, delta in temporal_patterns.items():
             match = re.search(pattern, query_lower)
             if match:
                 if delta is None:
-                    # Extract number of days from match groups
-                    days = int(match.group(1) or match.group(2))
-                    delta = timedelta(days=days)
+                    # Special handling based on pattern
+                    if 'end of' in pattern and 'year' in pattern:
+                        # "before end of this year" - this is asking about FUTURE articles
+                        # Since we don't have future articles, return None to indicate no temporal filtering
+                        # The LLM will understand from the context that we only have articles up to today
+                        logger.info(f"Detected future temporal query: 'before end of year' -> no filtering (relies on available articles)")
+                        return None
+                    
+                    elif 'this month' in match.group():
+                        # "this month" - articles from current calendar month only
+                        start_date = datetime(current_year, current_month, 1)
+                        # End date is first day of next month
+                        if current_month == 12:
+                            end_date = datetime(current_year + 1, 1, 1)
+                        else:
+                            end_date = datetime(current_year, current_month + 1, 1)
+                        logger.info(f"Detected temporal query: 'this month' -> date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} ({now.strftime('%B')} only)")
+                        return (start_date, end_date)
+                    
+                    elif 'last month' in match.group():
+                        # "last month" - articles from previous calendar month ONLY
+                        if current_month == 1:
+                            # January -> previous month is December of last year
+                            prev_month = 12
+                            prev_year = current_year - 1
+                        else:
+                            prev_month = current_month - 1
+                            prev_year = current_year
+                        start_date = datetime(prev_year, prev_month, 1)
+                        # End date is first day of current month
+                        end_date = datetime(current_year, current_month, 1)
+                        month_name = start_date.strftime('%B')
+                        logger.info(f"Detected temporal query: 'last month' -> date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} ({month_name} only)")
+                        return (start_date, end_date)
+                    
+                    elif 'next month' in match.group():
+                        # "next month" - future query, no articles available
+                        logger.info(f"Detected future temporal query: 'next month' -> no articles available")
+                        return None
+                    
+                    elif 'this week' in match.group():
+                        # "this week" - articles from Monday of current week to now
+                        days_since_monday = now.weekday()  # 0=Monday, 6=Sunday
+                        start_date = now - timedelta(days=days_since_monday)
+                        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                        logger.info(f"Detected temporal query: 'this week' -> from {start_date.strftime('%Y-%m-%d')} (Monday) onwards")
+                        return (start_date, None)  # Open-ended (up to now)
+                    
+                    elif 'last week' in match.group():
+                        # "last week" - articles from previous calendar week ONLY (Mon-Sun)
+                        days_since_monday = now.weekday()  # 0=Monday, 6=Sunday
+                        monday_this_week = now - timedelta(days=days_since_monday)
+                        start_date = monday_this_week - timedelta(days=7)
+                        end_date = monday_this_week  # Exclude this week
+                        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                        logger.info(f"Detected temporal query: 'last week' -> date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} (previous week only)")
+                        return (start_date, end_date)
+                    
+                    elif 'next week' in match.group():
+                        # "next week" - future query, no articles available
+                        logger.info(f"Detected future temporal query: 'next week' -> no articles available")
+                        return None
+                    
+                    elif 'this year' in match.group() or (match.lastindex and match.group(match.lastindex).isdigit() and len(match.group(match.lastindex)) == 4):
+                        # Specific year like "in 2025" or "this year"
+                        year = int(match.group(match.lastindex)) if match.lastindex and match.group(match.lastindex).isdigit() else current_year
+                        start_date = datetime(year, 1, 1)
+                        logger.info(f"Detected temporal query: year {year} -> from {start_date.strftime('%Y-%m-%d')} onwards")
+                        return (start_date, None)  # Open-ended
+                    
+                    elif 'weeks?' in pattern:
+                        # Extract weeks and convert to days
+                        weeks = int(match.group(1) or match.group(2) or match.group(3) or 1)
+                        delta = timedelta(days=weeks * 7)
+                    
+                    elif 'months?' in pattern:
+                        # Extract months and convert to days (approximate)
+                        months = int(match.group(1) or match.group(2) or match.group(3) or 1)
+                        delta = timedelta(days=months * 30)
+                    
+                    elif 'days?' in pattern:
+                        # Extract number of days
+                        days = int(match.group(1) or match.group(2) or match.group(3))
+                        delta = timedelta(days=days)
+                    
+                    else:
+                        logger.warning(f"Unhandled temporal pattern: {pattern}")
+                        continue
                 
+                # For other temporal queries, return open-ended range (cutoff to now)
                 cutoff = now - delta
-                logger.info(f"Detected temporal query: '{match.group()}' -> cutoff date: {cutoff.strftime('%Y-%m-%d')}")
-                return cutoff
+                logger.info(f"Detected temporal query: '{match.group()}' -> cutoff date: {cutoff.strftime('%Y-%m-%d')} (open-ended)")
+                return (cutoff, None)  # None means no end date (up to present)
         
         return None
+    
+    def _is_future_oriented_query(self, query: str) -> bool:
+        """
+        Detect if query is asking about future events/plans/releases
+        These queries should use broad retrieval (*) to find mentions in articles
+        
+        Args:
+            query: User's search query
+            
+        Returns:
+            True if query is future-oriented, False otherwise
+        """
+        import re
+        
+        query_lower = query.lower()
+        
+        # Future-oriented keywords
+        future_keywords = [
+            r'\bupcoming\b',
+            r'\bfuture\b',
+            r'\bnext\s+(week|month|year|quarter)',
+            r'\blater\b',
+            r'\bsoon\b',
+            r'\bplanned\b',
+            r'\bexpected\b',
+            r'\banticipated\b',
+            r'\bcoming\b',
+            r'\bwill\s+be\b',
+            r'\bto\s+be\s+(released|launched|announced)\b',
+            r'\bin\s+2026\b',
+            r'\bin\s+2027\b',
+            r'\bearly\s+2026\b',
+            r'\blate\s+2025\b',
+            r'\bevents?\s+in\b',
+            r'\breleases?\s+in\b',
+            r'\blaunch(es|ing)?\s+in\b',
+            r'\broadmap\b',
+            r'\bschedule(d)?\b',
+        ]
+        
+        for pattern in future_keywords:
+            if re.search(pattern, query_lower):
+                logger.info(f"Detected future-oriented query pattern: '{pattern}'")
+                return True
+        
+        return False
     
     def retrieve_articles(self, query: str, top_k: int = 5) -> List[Dict]:
         """
@@ -133,26 +299,34 @@ class RAGChatbot:
         from dateutil import parser as date_parser
         
         try:
-            # Detect if query contains temporal phrases
-            temporal_cutoff = self._detect_time_range(query)
+            # Detect if query contains temporal phrases or is future-oriented
+            temporal_range = self._detect_time_range(query)
+            is_future_query = self._is_future_oriented_query(query)
             
-            # Base cutoff: June 1, 2025 (always applied)
+            # Base cutoff: June 1, 2025 (always applied as minimum)
             base_cutoff = datetime(2025, 6, 1)
             
-            # Use the most restrictive cutoff
-            cutoff_date = max(temporal_cutoff, base_cutoff) if temporal_cutoff else base_cutoff
+            # Determine date filtering parameters
+            if temporal_range:
+                start_date, end_date = temporal_range
+                # Use the most restrictive start date (later of base or temporal)
+                cutoff_date = max(start_date, base_cutoff)
+            else:
+                cutoff_date = base_cutoff
+                end_date = None
             
             # Retrieve more results than needed for filtering
-            # If temporal query, retrieve ALL articles (*) sorted by date descending
-            search_text = "*" if temporal_cutoff else query
+            # If temporal query OR future-oriented query, retrieve ALL articles (*) sorted by date
+            use_broad_search = temporal_range is not None or is_future_query
+            search_text = "*" if use_broad_search else query
             search_params = {
                 "search_text": search_text,
                 "select": ["title", "content", "source", "published_date", "link"]
             }
             
-            if temporal_cutoff:
-                # For temporal queries, get many results and sort by date
-                search_params["top"] = 200  # Get enough to cover recent articles
+            if use_broad_search:
+                # For temporal/future queries, get many results and sort by date
+                search_params["top"] = 200  # Get enough to cover all articles
                 search_params["order_by"] = ["published_date desc"]  # Most recent first
             else:
                 search_params["top"] = top_k * 3
@@ -170,15 +344,17 @@ class RAGChatbot:
                         if article_date.tzinfo:
                             article_date = article_date.replace(tzinfo=None)
                         
-                        # Only include articles after cutoff date
+                        # Filter by date range
                         if article_date >= cutoff_date:
-                            articles.append({
-                                "title": result.get("title", ""),
-                                "content": result.get("content", "")[:3000],  # Get more content, will be truncated in format_context() based on token budget
-                                "source": result.get("source", ""),
-                                "date": date_str,
-                                "link": result.get("link", "")
-                            })
+                            # If end_date is specified, also check upper bound
+                            if end_date is None or article_date < end_date:
+                                articles.append({
+                                    "title": result.get("title", ""),
+                                    "content": result.get("content", "")[:3000],  # Get more content, will be truncated in format_context() based on token budget
+                                    "source": result.get("source", ""),
+                                    "date": date_str,
+                                    "link": result.get("link", "")
+                                })
                     except (ValueError, TypeError) as e:
                         logger.warning(f"Could not parse date '{date_str}': {e}")
                         continue
@@ -189,8 +365,11 @@ class RAGChatbot:
             # Return top K articles
             articles = articles[:top_k]
             
-            if temporal_cutoff:
-                logger.info(f"Retrieved {len(articles)} articles (filtered to {cutoff_date.strftime('%Y-%m-%d')}+) for temporal query")
+            if temporal_range:
+                date_range_str = f"{cutoff_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}" if end_date else f"{cutoff_date.strftime('%Y-%m-%d')}+"
+                logger.info(f"Retrieved {len(articles)} articles (filtered to {date_range_str}) for temporal query")
+            elif is_future_query:
+                logger.info(f"Retrieved {len(articles)} articles (broad search for future-oriented query)")
             else:
                 logger.info(f"Retrieved {len(articles)} articles (filtered to June 2025+) for query: {query}")
             
@@ -242,7 +421,7 @@ class RAGChatbot:
         
         return context
     
-    def chat(self, user_query: str, top_k: int = 5, temperature: float = 0.7) -> Dict:
+    def chat(self, user_query: str, top_k: int = 5, temperature: float = 0.7, search_override: str = None) -> Dict:
         """
         Main RAG chatbot function: retrieve articles and generate answer
         
@@ -250,18 +429,22 @@ class RAGChatbot:
             user_query: User's question
             top_k: Number of articles to retrieve (default: 5)
             temperature: Model temperature for response generation (default: 0.7)
+            search_override: Optional search query to override default retrieval (default: None, uses user_query)
             
         Returns:
             Dictionary with 'answer' and 'sources' (list of article dicts)
         """
         logger.info(f"Processing query: {user_query}")
         
-        # Step 1: Retrieve relevant articles
-        articles = self.retrieve_articles(user_query, top_k=top_k)
+        # Step 1: Retrieve relevant articles (use search_override if provided, otherwise use user_query)
+        search_query = search_override if search_override else user_query
+        if search_override:
+            logger.info(f"Using search override: {search_override}")
+        articles = self.retrieve_articles(search_query, top_k=top_k)
         
         if not articles:
             return {
-                "answer": "I couldn't find any relevant articles for your query. Try rephrasing or asking about a different topic.",
+                "answer": "I couldn't find any relevant articles for your query. Try rephrasing or asking about a different AI topic!",
                 "sources": []
             }
         
@@ -269,20 +452,27 @@ class RAGChatbot:
         context = self.format_context(articles)
         
         # Step 3: Create messages with system prompt and context
+        # Add current date context for temporal awareness
+        current_date = datetime.now().strftime("%B %d, %Y")
+        
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "You are an AI assistant that helps users understand trends in artificial intelligence news. "
-                    "Answer questions based ONLY on the article content provided below. "
-                    "\n\nCITATION RULES:\n"
-                    "- Each article is numbered [1], [2], [3], etc. in the context\n"
-                    "- When referencing information from an article, use the number in brackets like [1] or [2]\n"
-                    "- Place the citation at the end of the sentence or claim\n"
-                    "- Example: 'OpenAI announced a new model [1]' or 'AI investments are declining [2][3]'\n"
-                    "- You can cite multiple sources if relevant: [1][2]\n\n"
-                    "If the articles don't contain enough information to fully answer the question, say so honestly. "
-                    "Be concise and factual. Focus on what the articles actually say."
+                    f"You are Dot, a friendly and knowledgeable AI assistant that helps users understand trends in artificial intelligence news. "
+                    f"Today's date is {current_date}. Answer questions based ONLY on the article content provided.\n\n"
+                    "IMPORTANT: Focus exclusively on AI-related content. If articles contain non-AI topics, ignore them. "
+                    "Only discuss artificial intelligence, machine learning, large language models, AI companies, AI products, and related technologies.\n\n"
+                    "CITATION RULES:\n"
+                    "- Articles are numbered [1], [2], [3], etc.\n"
+                    "- Cite sources in brackets at the end of sentences: 'OpenAI released a new model [1]'\n"
+                    "- Combine multiple sources when relevant: [1][2]\n\n"
+                    "HANDLING LIMITED INFORMATION:\n"
+                    "- If articles only mention the topic briefly (e.g., in a list or passing reference), acknowledge this and provide what context IS available\n"
+                    "- Example: 'The articles mention [Company X] briefly: it appears in a list of conference speakers [1][2] and is described as a U.K. self-driving startup that received investment [3]. However, the articles don't provide detailed information about what the company does or why it's newsworthy.'\n"
+                    "- Be helpful by extracting ANY available context, even if limited\n\n"
+                    "If articles don't fully answer the question, say so honestly. For future events, explain you only have data up to today. "
+                    "Be concise and factual."
                 )
             },
             {
@@ -342,7 +532,7 @@ class RAGChatbot:
         
         if not articles:
             return {
-                "answer": "I couldn't find any relevant articles for your query.",
+                "answer": "I couldn't find any relevant articles for your query. Try rephrasing or asking about a different AI topic!",
                 "sources": []
             }
         
@@ -351,17 +541,23 @@ class RAGChatbot:
         context = self.format_context(articles, max_tokens=3500)  # Reduced from 5000 to account for history
         
         # Build messages with system prompt, history, and new context
+        # Add current date context for temporal awareness
+        current_date = datetime.now().strftime("%B %d, %Y")
+        
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "You are an AI assistant that helps users understand trends in artificial intelligence news. "
-                    "Answer questions based on the article content provided and previous conversation context. "
-                    "\n\nCITATION RULES:\n"
-                    "- Each article is numbered [1], [2], [3], etc.\n"
-                    "- Use these numbers in brackets to cite sources\n"
-                    "- Place citations at the end of sentences: 'The model was released [1]'\n"
-                    "- You can cite multiple sources: [1][2]\n\n"
+                    f"You are Dot, a friendly and knowledgeable AI assistant that helps users understand trends in artificial intelligence news. "
+                    f"Today's date is {current_date}. Answer questions using the article content and previous conversation context.\n\n"
+                    "IMPORTANT: Focus exclusively on AI-related content. Ignore non-AI topics even if present in articles.\n\n"
+                    "CITATION RULES:\n"
+                    "- Articles are numbered [1], [2], [3], etc.\n"
+                    "- Cite sources in brackets: 'The model was released [1]'\n"
+                    "- Combine multiple sources: [1][2]\n\n"
+                    "HANDLING LIMITED INFORMATION:\n"
+                    "- If articles only mention the topic briefly, acknowledge this and provide what context IS available\n"
+                    "- Be helpful by extracting ANY available context, even if limited\n\n"
                     "Be concise and factual."
                 )
             }

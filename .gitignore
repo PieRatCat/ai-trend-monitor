@@ -34,14 +34,12 @@ Thumbs.db
 # Utility scripts directory (testing/one-time scripts)
 utilities/
 
+# Documentation directory (session notes and development docs)
+docs/
+
 # Streamlit secrets (keep config.toml but ignore secrets)
 streamlit_app/.streamlit/secrets.toml
 run_dashboard.py
-DEPLOYMENT.md
-DEPLOYMENT_CHECKLIST.md
-DEPLOY_GUIDE.md
-AZURE_FIXES.md
-RESPONSIVE_DESIGN_IMPROVEMENTS.md
 .github/copilot-instructions.md
 project_summary.ipynb
 

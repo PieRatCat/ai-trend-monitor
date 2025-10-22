@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -221,24 +222,57 @@ def main():
     with open(css_file) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
     
+    # Hide sidebar completely and reduce header spacing
+    st.html("""
+    <style>
+    [data-testid="stSidebar"] {
+        display: none;
+    }
+    .main .block-container {
+        padding-left: 3rem !important;
+        padding-top: 0rem !important;
+    }
+    /* Remove extra space above first element */
+    .main .block-container > div:first-child {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    /* Compact title spacing */
+    h1 {
+        margin-top: 0 !important;
+        margin-bottom: 0.25rem !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0 !important;
+    }
+    /* Compact paragraph spacing after title */
+    h1 + div p {
+        margin-top: 0 !important;
+        margin-bottom: 0.5rem !important;
+    }
+    /* Reduce hr spacing */
+    hr {
+        margin-top: 0.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    </style>
+    """)
+    
+    # Add site title and subtitle at the top
     st.title("AI Trend Monitor")
     st.markdown("*Exploring AI news trends with advanced analytics and search*")
+    st.markdown("---")
     
-    # Sidebar
-    st.sidebar.header("Navigation")
-    page = st.sidebar.radio(
-        "Select View",
-        ["News", "Analytics", "Chatbot", "About"]
-    )
+    # Define pages for navigation
+    news_page = st.Page(show_news_page, title="News")
+    analytics_page = st.Page(show_analytics_page, title="Analytics")
+    chatbot_page = st.Page(show_chatbot_page, title="Chatbot")
+    about_page = st.Page(show_about_page, title="About")
     
-    if page == "News":
-        show_news_page()
-    elif page == "Analytics":
-        show_analytics_page()
-    elif page == "Chatbot":
-        show_chatbot_page()
-    else:
-        show_about_page()
+    # Create navigation at top
+    pg = st.navigation([news_page, analytics_page, chatbot_page, about_page], position="top")
+    
+    # Run the selected page
+    pg.run()
 
 def show_news_page():
     """News page with search and curated sections"""
@@ -460,28 +494,67 @@ def display_article_card_compact(article):
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def generate_curated_content(section_type):
-    """Generate curated content using RAG chatbot"""
+    """Generate curated content using RAG chatbot with AI-specific search"""
+    from datetime import datetime
+    from dateutil import parser as date_parser
+    import re
+    
     try:
         chatbot = RAGChatbot()
+        current_date = datetime.now()
         
-        if section_type == "releases":
-            query = """What are the most recent AI product releases, model announcements, or major feature launches mentioned in the articles?
+        # Use targeted AI keywords to filter at retrieval level
+        ai_search_override = "GPT ChatGPT Claude LLM model OpenAI Anthropic machine learning neural network deep learning generative AI"
+        
+        if section_type == "products":
+            # Focus on software, models, tools, APIs
+            query = """What are the most recent AI SOFTWARE and MODEL developments mentioned in the articles?
 
-List 5 items in this format:
-<li><strong>Product/Company Name:</strong> Brief description</li>
+STRICT RULES - Only include if it's about:
+- AI models (GPT-5, Claude 4, Gemini updates, new LLMs, model releases)
+- AI/ML software tools (ChatGPT features, API updates, ML libraries, frameworks)
+- Generative AI applications (image/video/audio generation tools)
+- AI development platforms (ML platforms, AI SDKs, developer tools)
+- AI model capabilities (new features, performance improvements, fine-tuning)
 
-Focus on recently released products and announcements, not future events."""
+DO NOT include:
+- General business news or company announcements without product details
+- AI hardware or chips (save for industry section)
+- Funding or investment news without product specifics
+- Regulatory or policy news
+- Generic tech products
+
+List 5 SOFTWARE/MODEL items in this format:
+<li><strong>Product/Model Name:</strong> Brief description of the software or model update</li>
+
+Focus on practical AI tools and models that developers and practitioners use."""
             temperature = 0.5
-        else:  # upcoming
-            query = """What upcoming AI events, product releases, or anticipated launches are mentioned in the articles?
+        else:  # industry
+            # Focus on companies, funding, regulations, research
+            query = """What are the most recent AI INDUSTRY developments mentioned in the articles?
 
-Provide exactly 5 items using this HTML format only (no numbered lists, no markdown):
-<li><strong>Date/Timeframe:</strong> Event or release name and brief description</li>
+STRICT RULES - Only include if it's about:
+- AI company news (OpenAI, Anthropic, Google AI, DeepMind, etc.)
+- AI startup funding, acquisitions, or launches
+- AI research breakthroughs or academic papers
+- AI regulation, policy, or ethics discussions
+- AI chip/hardware manufacturers (NVIDIA, AMD, specialized AI chips)
+- Major AI partnerships or collaborations
 
-Focus on future events and planned releases. Use only bullet points in the format shown above."""
-            temperature = 0.7
+DO NOT include:
+- Specific software or model releases (save for products section)
+- General tech news unrelated to AI
+- Consumer electronics or vehicles
+- Business news from non-AI companies
+
+List 5 INDUSTRY items in this format:
+<li><strong>Company/Topic:</strong> Brief description of the industry development</li>
+
+Focus on the AI ecosystem: who's doing what, funding, regulations, and research."""
+            temperature = 0.5
         
-        result = chatbot.chat(query, top_k=15, temperature=temperature)
+        # Force specific AI search terms for retrieval (override default broad search)
+        result = chatbot.chat(query, top_k=15, temperature=temperature, search_override=ai_search_override)
         
         # Clean up the response
         answer = result["answer"]
@@ -493,8 +566,6 @@ Focus on future events and planned releases. Use only bullet points in the forma
             "here are five", 
             "Here are 5",
             "Here are five",
-            "Recent AI Developments:",
-            "Mark Your Calendar:",
             "Based on the articles,",
             "According to the articles,",
             "```html",
@@ -504,7 +575,6 @@ Focus on future events and planned releases. Use only bullet points in the forma
             answer = answer.replace(phrase, "")
         
         # Remove article citations like [1], [2], [1][2], etc.
-        import re
         answer = re.sub(r'\s*\[\d+\](\[\d+\])*', '', answer)
         
         # Clean up markdown-style lists (- or *) and convert to HTML if needed
@@ -533,17 +603,23 @@ Focus on future events and planned releases. Use only bullet points in the forma
 def show_curated_sections():
     """Display curated 'New' and 'Upcoming' sections with AI-generated content"""
     
-    # New Releases Section
-    st.subheader("New Releases & Updates")
+    # Add cache clearing button
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("Refresh", help="Clear cache and regenerate content"):
+            generate_curated_content.clear()
+            st.rerun()
     
-    with st.spinner("Generating recent developments..."):
-        releases_content = generate_curated_content("releases")
+    # AI Products & Models Section
+    st.subheader("AI Products & Models")
     
-    if releases_content:
+    with st.spinner("Generating AI product and model updates..."):
+        products_content = generate_curated_content("products")
+    
+    if products_content:
         st.markdown(f"""
         <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        <p style='margin: 0; color: #2D2D2D;'><strong>Recent AI Developments:</strong></p>
-        {releases_content}
+        {products_content}
         <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Generated from indexed articles</em></p>
         </div>
         """, unsafe_allow_html=True)
@@ -551,7 +627,6 @@ def show_curated_sections():
         # Fallback to static content if generation fails
         st.markdown("""
         <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        <p style='margin: 0; color: #2D2D2D;'><strong>Recent AI Developments:</strong></p>
         <ul style='margin-top: 0.5rem; color: #2D2D2D;'>
         <li><strong>ChatGPT Canvas:</strong> OpenAI launches collaborative workspace for writing and coding with AI</li>
         <li><strong>Claude 3.5 Sonnet Updated:</strong> Anthropic releases improved version with better coding capabilities</li>
@@ -565,17 +640,16 @@ def show_curated_sections():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Upcoming Events Section
-    st.subheader("Upcoming Events & Releases")
+    # AI Industry News Section
+    st.subheader("AI Industry News")
     
-    with st.spinner("Generating upcoming events..."):
-        upcoming_content = generate_curated_content("upcoming")
+    with st.spinner("Generating AI industry updates..."):
+        industry_content = generate_curated_content("industry")
     
-    if upcoming_content:
+    if industry_content:
         st.markdown(f"""
         <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        <p style='margin: 0; color: #2D2D2D;'><strong>Mark Your Calendar:</strong></p>
-        {upcoming_content}
+        {industry_content}
         <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Generated from indexed articles</em></p>
         </div>
         """, unsafe_allow_html=True)
@@ -583,13 +657,12 @@ def show_curated_sections():
         # Fallback to static content if generation fails
         st.markdown("""
         <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        <p style='margin: 0; color: #2D2D2D;'><strong>Mark Your Calendar:</strong></p>
         <ul style='margin-top: 0.5rem; color: #2D2D2D;'>
-        <li><strong>Late 2025:</strong> OpenAI expected to release o1 reasoning model for all ChatGPT users</li>
-        <li><strong>December 9-15, 2025:</strong> NeurIPS Conference in Vancouver - Premier AI research presentations</li>
-        <li><strong>Early 2026:</strong> Google Gemini 2.0 anticipated with enhanced multimodal capabilities</li>
-        <li><strong>January 7-10, 2026:</strong> CES 2026 in Las Vegas - AI hardware and consumer tech showcase</li>
-        <li><strong>Q1 2026:</strong> Apple Intelligence features expanding to more languages and regions</li>
+        <li><strong>OpenAI:</strong> Reportedly raising funds at $150B valuation, restructuring as for-profit company</li>
+        <li><strong>Anthropic:</strong> Secures additional funding from Google and Amazon for Claude development</li>
+        <li><strong>EU AI Act:</strong> First comprehensive AI regulation framework takes effect, setting global precedent</li>
+        <li><strong>NVIDIA:</strong> Announces next-generation AI chips with improved efficiency for large language models</li>
+        <li><strong>AI Research:</strong> New benchmarks show rapid progress in mathematical reasoning and code generation</li>
         </ul>
         <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Based on industry announcements and trends</em></p>
         </div>
@@ -661,16 +734,21 @@ def show_analytics_page():
     avg_net_sentiment = df['net_sentiment'].mean()
     delta_label = "Positive lean" if avg_net_sentiment > 0 else "Negative lean" if avg_net_sentiment < 0 else "Neutral"
     
-    # Sidebar with statistics
-    with st.sidebar:
-        st.header("Statistics")
+    # Statistics at the top in columns
+    st.markdown(f"**Analyzing {len(articles)} articles**")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
         st.metric("Total Articles", len(df))
+    with col2:
         st.metric("Data Sources", df['source'].nunique())
+    with col3:
         st.metric("Earliest Article", min_date)
+    with col4:
         st.metric("Latest Article", max_date)
+    with col5:
         st.metric("Avg Net Sentiment", f"{avg_net_sentiment:.3f} ({delta_label})")
     
-    st.markdown(f"**Analyzing {len(articles)} articles**")
     st.markdown("---")
     
     # Topic Trend Timeline
@@ -734,8 +812,8 @@ def show_analytics_page():
             # Visualization mode toggle on same row
             viz_mode = st.selectbox(
                 "View mode",
-                options=["Daily", "Cumulative", "Weekly"],
-                index=1,  # Default to Cumulative
+                options=["Weekly", "Daily", "Cumulative"],
+                index=0,  # Default to Weekly
                 help="Daily Count, Cumulative Count, or Weekly Aggregation"
             )
             # Map short names to full names
@@ -750,7 +828,7 @@ def show_analytics_page():
             # Add some spacing to align with inputs
             st.write("")
             st.write("")
-            if st.button("Reset", use_container_width=True, help="Clear search and reset"):
+            if st.button("Reset", help="Clear search and reset"):
                 # Increment counter to force widget recreation with new key
                 st.session_state.entity_reset_counter += 1
                 st.rerun()
@@ -864,87 +942,168 @@ def show_analytics_page():
                 plot_data = weekly_stats
                 count_label = 'Articles per Week'
             
-            # Create compact figure with two y-axes (responsive sizing)
-            figsize = get_responsive_figsize(10, 3.5, container_fraction=1.0)
-            fig, ax1 = plt.subplots(figsize=figsize)
+            # Create Plotly figure with dual y-axes
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
             
-            # Plot 1: Article count (left y-axis)
-            color_count = AITREND_COLOURS['primary']
-            color_count_dark = '#A05A1F'  # Darker orange for better visibility
+            # Plot 1: Article count (left y-axis) - Line with markers
+            fig.add_trace(
+                go.Scatter(
+                    x=plot_data['date'], 
+                    y=plot_data['article_count'],
+                    name=count_label,
+                    mode='lines+markers',
+                    line=dict(color=AITREND_COLOURS['primary'], width=2.5),
+                    marker=dict(
+                        size=8, 
+                        line=dict(width=1.5, color='white'),
+                        color=AITREND_COLOURS['primary']
+                    ),
+                    hovertemplate='<b>%{x|%b %d, %Y}</b><br>' + count_label + ': %{y}<extra></extra>'
+                ),
+                secondary_y=False
+            )
             
-            # Line plot for all modes
-            line1 = ax1.plot(plot_data['date'], plot_data['article_count'], 
-            color=color_count, marker='o', linewidth=1.5, markersize=5,
-            label=count_label, markeredgecolor='white', markeredgewidth=0.8)
-            
-            ax1.set_xlabel('Publication Date', fontsize=9, color=AITREND_COLOURS['text'], fontweight='bold')
-            ax1.set_ylabel(count_label, fontsize=9, color=color_count_dark, fontweight='bold')
-            ax1.tick_params(axis='y', labelcolor=color_count_dark, colors=color_count_dark, labelsize=8)
-            ax1.tick_params(axis='x', rotation=45, colors=AITREND_COLOURS['text'], labelsize=7)
-            
-            # Set y-axis to start at 0 for article count and use whole numbers only
-            ax1.set_ylim(bottom=0)
-            ax1.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
-            ax1.grid(axis='y', alpha=0.3, linestyle='--', linewidth=0.5)
-            ax1.set_axisbelow(True)
-            
-            # Plot 2: Net sentiment (right y-axis)
-            ax2 = ax1.twinx()
-            color_sentiment = AITREND_COLOURS['positive']  # Use teal color from pie chart
-            color_sentiment_dark = '#3A6B7A'  # Darker teal for better visibility
-            
-            # Line plot for all modes
-            line2 = ax2.plot(plot_data['date'], plot_data['net_sentiment'], 
-            color=color_sentiment, marker='s', linewidth=1.5, markersize=5,
-            label='Net Sentiment', markeredgecolor='white', markeredgewidth=0.8)
-            
-            ax2.set_ylabel('Net Sentiment', fontsize=9, color=color_sentiment_dark, fontweight='bold')
-            ax2.tick_params(axis='y', labelcolor=color_sentiment_dark, colors=color_sentiment_dark, labelsize=8)
-            
-            # Set sentiment y-axis to be symmetric around 0 (-1 to +1)
-            max_abs_sentiment = max(abs(plot_data['net_sentiment'].min()), 
-                           abs(plot_data['net_sentiment'].max()), 0.3)
-            ax2.set_ylim(-max_abs_sentiment * 1.1, max_abs_sentiment * 1.1)
+            # Plot 2: Net sentiment (right y-axis) - Line with square markers
+            fig.add_trace(
+                go.Scatter(
+                    x=plot_data['date'],
+                    y=plot_data['net_sentiment'],
+                    name='Net Sentiment',
+                    mode='lines+markers',
+                    line=dict(color=AITREND_COLOURS['positive'], width=2.5),
+                    marker=dict(
+                        size=8, 
+                        symbol='square',
+                        line=dict(width=1.5, color='white'),
+                        color=AITREND_COLOURS['positive']
+                    ),
+                    hovertemplate='<b>%{x|%b %d, %Y}</b><br>Net Sentiment: %{y:.3f}<extra></extra>'
+                ),
+                secondary_y=True
+            )
             
             # Add horizontal line at y=0 for neutral sentiment
-            ax2.axhline(y=0, color=AITREND_COLOURS['neutral'], linestyle='-', 
-               linewidth=1.2, alpha=0.6, label='Neutral (0)')
+            fig.add_hline(
+                y=0, 
+                line_dash="solid", 
+                line_color=AITREND_COLOURS['neutral'], 
+                line_width=2,
+                opacity=0.6,
+                secondary_y=True
+            )
             
-            # Add shaded regions for positive/negative
-            ax2.axhspan(0, max_abs_sentiment * 1.1, alpha=0.05, color=AITREND_COLOURS['positive'], zorder=0)
-            ax2.axhspan(-max_abs_sentiment * 1.1, 0, alpha=0.05, color=AITREND_COLOURS['negative'], zorder=0)
+            # Add shaded regions for positive/negative sentiment (constrained to [-1, 1])
+            fig.add_hrect(
+                y0=0, y1=1,
+                fillcolor=AITREND_COLOURS['positive'],
+                opacity=0.05,
+                line_width=0,
+                secondary_y=True
+            )
+            fig.add_hrect(
+                y0=-1, y1=0,
+                fillcolor=AITREND_COLOURS['negative'],
+                opacity=0.05,
+                line_width=0,
+                secondary_y=True
+            )
             
-            # Title
+            # Chart title
             mode_text = viz_mode.replace(" Count", "").replace(" Aggregation", "")
-            plt.title(f'Trend: "{selected_entity}" ({mode_text})', 
-             fontsize=11, color=AITREND_COLOURS['text'], fontweight='bold', pad=20)
             
-            # Combined legend - positioned above the plot area
-            lines = line1 + line2
-            labels = [l.get_label() for l in lines]
-            ax1.legend(lines, labels, loc='lower left', bbox_to_anchor=(0, 1.02), 
-              ncol=2, fontsize=8, framealpha=0.95, borderaxespad=0)
+            # Update layout
+            fig.update_layout(
+                title=dict(
+                    text=f'Trend: "{selected_entity}" ({mode_text})',
+                    font=dict(size=18, color=AITREND_COLOURS['text'], family='Arial, sans-serif'),
+                    x=0.5,
+                    xanchor='center'
+                ),
+                height=450,
+                hovermode='x unified',
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="left",
+                    x=0,
+                    font=dict(size=13)
+                ),
+                margin=dict(l=70, r=70, t=90, b=70),
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                hoverlabel=dict(
+                    bgcolor="white",
+                    font_size=12,
+                    font_family="Arial, sans-serif"
+                )
+            )
             
-            # Format x-axis
-            plt.xticks(rotation=45, ha='right')
-            plt.tight_layout()
-            st.pyplot(fig)
+            # Update y-axes
+            color_count_dark = '#A05A1F'
+            color_sentiment_dark = '#3A6B7A'
             
-            # Show summary statistics (full width for better visibility)
-            col_a, col_b, col_c, col_d = st.columns([1, 1, 1, 1], gap="medium")
-            with col_a:
-                st.metric("Total Articles", len(topic_articles))
-            with col_b:
-                positive_count = (topic_articles['sentiment'] == 'positive').sum()
-                positive_pct = (positive_count / len(topic_articles)) * 100
-                st.metric("Positive", f"{positive_pct:.1f}% ({positive_count})")
-            with col_c:
-                negative_count = (topic_articles['sentiment'] == 'negative').sum()
-                negative_pct = (negative_count / len(topic_articles)) * 100
-                st.metric("Negative", f"{negative_pct:.1f}% ({negative_count})")
-            with col_d:
-                date_range = (topic_articles['date'].max() - topic_articles['date'].min()).days
-                st.metric("Date Span", f"{date_range} days")
+            # Left y-axis (article count) - force integer ticks with proper spacing
+            max_count = plot_data['article_count'].max()
+            if max_count <= 5:
+                tick_spacing = 1
+            elif max_count <= 10:
+                tick_spacing = 2
+            elif max_count <= 20:
+                tick_spacing = 5
+            else:
+                tick_spacing = int(max_count / 5)  # ~5 ticks
+            
+            fig.update_yaxes(
+                title_text=count_label,
+                title_font=dict(size=16, color=color_count_dark),
+                tickfont=dict(size=14, color=color_count_dark),
+                gridcolor='rgba(0,0,0,0.1)',
+                griddash='dot',
+                zeroline=False,
+                rangemode='tozero',
+                dtick=tick_spacing,  # Integer spacing based on data range
+                secondary_y=False
+            )
+            
+            # Right y-axis (sentiment) - constrain to [-1, 1] range
+            fig.update_yaxes(
+                title_text="Net Sentiment",
+                title_font=dict(size=16, color=color_sentiment_dark),
+                tickfont=dict(size=14, color=color_sentiment_dark),
+                zeroline=True,
+                zerolinecolor=AITREND_COLOURS['neutral'],
+                zerolinewidth=2,
+                range=[-1, 1],  # Hard limit to logical sentiment range
+                dtick=0.2,  # Show ticks at -1, -0.8, -0.6, ..., 0.8, 1
+                secondary_y=True
+            )
+            
+            # Update x-axis
+            fig.update_xaxes(
+                title_text="Publication Date",
+                title_font=dict(size=16, color=AITREND_COLOURS['text']),
+                tickfont=dict(size=14, color=AITREND_COLOURS['text']),
+                tickangle=-45,
+                showgrid=False
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig)
+            
+            # Show summary statistics in single line
+            positive_count = (topic_articles['sentiment'] == 'positive').sum()
+            positive_pct = (positive_count / len(topic_articles)) * 100
+            negative_count = (topic_articles['sentiment'] == 'negative').sum()
+            negative_pct = (negative_count / len(topic_articles)) * 100
+            date_range = (topic_articles['date'].max() - topic_articles['date'].min()).days
+            
+            st.markdown(
+                f"**Total Articles:** {len(topic_articles)} &nbsp;|&nbsp; "
+                f"**Positive:** {positive_pct:.1f}% ({positive_count}) &nbsp;|&nbsp; "
+                f"**Negative:** {negative_pct:.1f}% ({negative_count}) &nbsp;|&nbsp; "
+                f"**Date Span:** {date_range} days"
+            )
         else:
             st.info(f"No articles found containing the entity '{selected_entity}'")
     
@@ -981,84 +1140,167 @@ def show_analytics_page():
     The distribution shows how articles lean across the sentiment spectrum.
     """)
     
-    # Create diverging histogram with zero in the middle (responsive sizing)
-    figsize = get_responsive_figsize(6, 3.5, container_fraction=1.0)
-    fig, ax = plt.subplots(figsize=figsize)
-    
-    # Create histogram with gradient coloring
-    # Create custom colormap from orange (negative) to teal (positive)
-    colors_gradient = [AITREND_COLOURS['negative'], AITREND_COLOURS['neutral'], AITREND_COLOURS['positive']]
+    # Create Plotly histogram with gradient coloring and KDE overlay
     n_bins = 30
-    cmap = mcolors.LinearSegmentedColormap.from_list('sentiment', colors_gradient, N=n_bins)
     
-    # Create histogram data
-    counts, bins, patches = ax.hist(df['net_sentiment'], bins=n_bins, alpha=0.7, edgecolor='white', linewidth=0.5)
+    # Calculate histogram bins manually to assign colors
+    counts, bin_edges = np.histogram(df['net_sentiment'], bins=n_bins, range=(-1, 1))
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    bin_width = bin_edges[1] - bin_edges[0]
     
-    # Color each bar based on its position (negative to positive)
-    bin_centers = 0.5 * (bins[:-1] + bins[1:])
-    # Normalize bin centers to [0, 1] for colormap
-    col = (bin_centers + 1) / 2  # Map from [-1, 1] to [0, 1]
-    for c, p in zip(col, patches):
-        p.set_facecolor(cmap(c))
+    # Create color gradient based on bin position (negative=orange, neutral=tan, positive=teal)
+    def get_sentiment_color(value):
+        """Get color based on sentiment value (-1 to 1)"""
+        # Normalize to 0-1 range
+        norm_value = (value + 1) / 2
+        if norm_value < 0.5:
+            # Blend from negative to neutral
+            ratio = norm_value * 2
+            # Orange to tan
+            return f'rgba({int(193 + (156-193)*ratio)}, {int(125 + (142-125)*ratio)}, {int(61 + (122-61)*ratio)}, 0.8)'
+        else:
+            # Blend from neutral to positive
+            ratio = (norm_value - 0.5) * 2
+            # Tan to teal
+            return f'rgba({int(156 - (156-91)*ratio)}, {int(142 + (143-142)*ratio)}, {int(122 + (163-122)*ratio)}, 0.8)'
+    
+    bar_colors = [get_sentiment_color(bc) for bc in bin_centers]
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Add histogram bars with gradient colors
+    fig.add_trace(go.Bar(
+        x=bin_centers,
+        y=counts,
+        width=bin_width * 0.95,
+        marker=dict(
+            color=bar_colors,
+            line=dict(color='white', width=1)
+        ),
+        hovertemplate='<b>Sentiment: %{x:.3f}</b><br>Articles: %{y}<extra></extra>',
+        showlegend=False
+    ))
     
     # Add KDE curve
     density = stats.gaussian_kde(df['net_sentiment'])
     xs = np.linspace(-1, 1, 200)
     ys = density(xs)
     # Scale KDE to match histogram height
-    ys_scaled = ys * len(df['net_sentiment']) * (bins[1] - bins[0])
-    ax.plot(xs, ys_scaled, color=AITREND_COLOURS['text'], linewidth=2, alpha=0.8)
+    ys_scaled = ys * len(df['net_sentiment']) * bin_width
+    
+    fig.add_trace(go.Scatter(
+        x=xs,
+        y=ys_scaled,
+        mode='lines',
+        line=dict(color=AITREND_COLOURS['text'], width=2.5),
+        name='Density Curve',
+        hovertemplate='<b>Sentiment: %{x:.3f}</b><br>Density: %{y:.1f}<extra></extra>'
+    ))
     
     # Add vertical line at zero (neutral)
-    ax.axvline(x=0, color=AITREND_COLOURS['text'], linestyle='--', 
-               linewidth=2, alpha=0.7, label='Neutral (0)')
+    fig.add_vline(
+        x=0,
+        line_dash="dash",
+        line_color=AITREND_COLOURS['text'],
+        line_width=2.5,
+        opacity=0.7,
+        annotation_text="Neutral",
+        annotation_position="top",
+        annotation_font_size=12,
+        annotation_font_color=AITREND_COLOURS['text']
+    )
     
-    # Color the regions
-    ax.axvspan(-1, 0, alpha=0.05, color=AITREND_COLOURS['negative'], zorder=0)
-    ax.axvspan(0, 1, alpha=0.05, color=AITREND_COLOURS['positive'], zorder=0)
+    # Add shaded regions for negative/positive
+    fig.add_vrect(
+        x0=-1, x1=0,
+        fillcolor=AITREND_COLOURS['negative'],
+        opacity=0.08,
+        line_width=0,
+        layer='below'
+    )
+    fig.add_vrect(
+        x0=0, x1=1,
+        fillcolor=AITREND_COLOURS['positive'],
+        opacity=0.08,
+        line_width=0,
+        layer='below'
+    )
     
-    # Add labels for regions with darker colors
-    color_negative_dark = '#A05A1F'  # Darker orange
-    color_positive_dark = '#3A6B7A'  # Darker teal
-    ax.text(-0.5, ax.get_ylim()[1] * 0.95, 'Negative', 
-           fontsize=9, color=color_negative_dark, 
-           ha='center', va='top', fontweight='bold', alpha=1.0)
-    ax.text(0.5, ax.get_ylim()[1] * 0.95, 'Positive', 
-           fontsize=9, color=color_positive_dark, 
-           ha='center', va='top', fontweight='bold', alpha=1.0)
+    # Add text annotations for regions
+    color_negative_dark = '#A05A1F'
+    color_positive_dark = '#3A6B7A'
     
-    ax.set_xlabel('Net Sentiment Score (Negative ← → Positive)', 
-                  fontsize=9, color=AITREND_COLOURS['text'], fontweight='bold')
-    ax.set_ylabel('Number of Articles', fontsize=9, color=AITREND_COLOURS['text'], fontweight='bold')
-    ax.set_title('Distribution of Article Sentiment', fontsize=10, 
-                color=AITREND_COLOURS['text'], pad=10, fontweight='bold')
-    ax.tick_params(labelsize=7, colors=AITREND_COLOURS['text'])
-    ax.set_xlim(-1, 1)
-    ax.legend(fontsize=7, framealpha=0.9)
+    # Get max y value for positioning labels
+    max_y = max(max(counts), max(ys_scaled))
     
-    plt.tight_layout()
-    st.pyplot(fig)
+    fig.add_annotation(
+        x=-0.5, y=max_y * 0.95,
+        text="<b>Negative</b>",
+        showarrow=False,
+        font=dict(size=13, color=color_negative_dark),
+        yshift=0
+    )
     
-    # Combined metrics in two rows
-    col1, col2, col3, col4 = st.columns(4, gap="small")
-    with col1:
-        st.metric("Positive", f"{positive_pct:.1f}% ({positive_count} articles)")
-    with col2:
-        st.metric("Neutral", f"{neutral_pct:.1f}% ({neutral_count} articles)")
-    with col3:
-        st.metric("Negative", f"{negative_pct:.1f}% ({negative_count} articles)")
-    with col4:
-        st.metric("Mixed", f"{mixed_pct:.1f}% ({mixed_count} articles)")
+    fig.add_annotation(
+        x=0.5, y=max_y * 0.95,
+        text="<b>Positive</b>",
+        showarrow=False,
+        font=dict(size=13, color=color_positive_dark),
+        yshift=0
+    )
     
-    col5, col6, col7, col8 = st.columns(4, gap="small")
-    with col5:
-        st.metric("Leaning Negative", f"{leaning_neg_pct:.1f}% ({leaning_negative} articles)")
-    with col6:
-        st.metric("Leaning Positive", f"{leaning_pos_pct:.1f}% ({leaning_positive} articles)")
-    with col7:
-        st.metric("Mean Score", f"{mean_sentiment:.3f}")
-    with col8:
-        st.metric("Median Score", f"{median_sentiment:.3f}")
+    # Update layout
+    fig.update_layout(
+        title=dict(
+            text='Distribution of Article Sentiment',
+            font=dict(size=18, color=AITREND_COLOURS['text'], family='Arial, sans-serif'),
+            x=0.5,
+            xanchor='center'
+        ),
+        xaxis_title="Net Sentiment Score (Negative ← → Positive)",
+        yaxis_title="Number of Articles",
+        height=450,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        margin=dict(l=70, r=70, t=80, b=70),
+        hovermode='x unified',
+        showlegend=False,
+        bargap=0.02
+    )
+    
+    # Update axes
+    fig.update_xaxes(
+        range=[-1, 1],
+        dtick=0.2,
+        tickfont=dict(size=14, color=AITREND_COLOURS['text']),
+        title_font=dict(size=16, color=AITREND_COLOURS['text']),
+        showgrid=False
+    )
+    
+    fig.update_yaxes(
+        rangemode='tozero',
+        tickfont=dict(size=14, color=AITREND_COLOURS['text']),
+        title_font=dict(size=16, color=AITREND_COLOURS['text']),
+        gridcolor='rgba(0,0,0,0.1)',
+        griddash='dot'
+    )
+    
+    st.plotly_chart(fig)
+    
+    # Display metrics in two compact lines
+    st.markdown(
+        f"**Positive:** {positive_pct:.1f}% ({positive_count}) &nbsp;|&nbsp; "
+        f"**Neutral:** {neutral_pct:.1f}% ({neutral_count}) &nbsp;|&nbsp; "
+        f"**Negative:** {negative_pct:.1f}% ({negative_count}) &nbsp;|&nbsp; "
+        f"**Mixed:** {mixed_pct:.1f}% ({mixed_count})"
+    )
+    st.markdown(
+        f"**Leaning Negative:** {leaning_neg_pct:.1f}% ({leaning_negative}) &nbsp;|&nbsp; "
+        f"**Leaning Positive:** {leaning_pos_pct:.1f}% ({leaning_positive}) &nbsp;|&nbsp; "
+        f"**Mean Score:** {mean_sentiment:.3f} &nbsp;|&nbsp; "
+        f"**Median Score:** {median_sentiment:.3f}"
+    )
     
     st.markdown("---")
     
@@ -1070,103 +1312,167 @@ def show_analytics_page():
     source_sentiment['Total'] = source_sentiment.sum(axis=1)
     source_sentiment = source_sentiment.sort_values('Total', ascending=False)
     
-    # Create compact HTML table
-    table_html = """<table class="source-table">
-    <thead>
-        <tr>
-            <th>Source</th>
-            <th style="text-align: center;">Articles</th>
-            <th style="text-align: center;">Share</th>
-            <th>Sentiment Distribution</th>
-        </tr>
-    </thead>
-    <tbody>"""
+    # Clean up source names (remove www. prefix)
+    source_sentiment.index = source_sentiment.index.str.replace(r'^www\.', '', regex=True)
     
-    for source in source_sentiment.index:
-        count = source_sentiment.loc[source, 'Total']
-        pct = (count / total_articles) * 100
-        
-        # Get sentiment counts for this source
-        pos = source_sentiment.loc[source].get('positive', 0)
-        neu = source_sentiment.loc[source].get('neutral', 0)
-        neg = source_sentiment.loc[source].get('negative', 0)
-        mix = source_sentiment.loc[source].get('mixed', 0)
-        
-        # Calculate percentages for sentiment bar
-        pos_pct = (pos / count * 100) if count > 0 else 0
-        neu_pct = (neu / count * 100) if count > 0 else 0
-        neg_pct = (neg / count * 100) if count > 0 else 0
-        mix_pct = (mix / count * 100) if count > 0 else 0
-        
-        # Build sentiment bar (ordered: Negative → Neutral → Positive → Mixed)
-        sentiment_bar = '<div class="sentiment-bar">'
-        if neg > 0:
-            sentiment_bar += f'<div class="sentiment-segment" style="width: {neg_pct}%; background-color: #C17D3D;">{neg}</div>'
-        if neu > 0:
-            sentiment_bar += f'<div class="sentiment-segment" style="width: {neu_pct}%; background-color: #8B9D83;">{neu}</div>'
-        if pos > 0:
-            sentiment_bar += f'<div class="sentiment-segment" style="width: {pos_pct}%; background-color: #5C9AA5;">{pos}</div>'
-        if mix > 0:
-            sentiment_bar += f'<div class="sentiment-segment" style="width: {mix_pct}%; background-color: #B8A893;">{mix}</div>'
-        sentiment_bar += '</div>'
-        
-        table_html += f"""
-    <tr>
-        <td><strong>{source}</strong></td>
-        <td style="text-align: center;">{int(count)}</td>
-        <td style="text-align: center;">{pct:.0f}%</td>
-        <td>{sentiment_bar}</td>
-    </tr>"""
+    # Prepare data for Plotly stacked bar chart
+    sources = source_sentiment.index.tolist()
+    num_sources = len(sources)
     
-    table_html += """
-    </tbody>
-</table>"""
+    # Calculate dynamic height: minimum 40px per source, minimum 400px total
+    chart_height = max(400, num_sources * 40)
     
-    st.markdown(table_html, unsafe_allow_html=True)
+    # Get sentiment counts and percentages for each source
+    sentiment_data = {
+        'Negative': {'counts': [], 'percentages': [], 'color': '#C17D3D'},
+        'Neutral': {'counts': [], 'percentages': [], 'color': '#8B9D83'},
+        'Positive': {'counts': [], 'percentages': [], 'color': '#5C9AA5'},
+        'Mixed': {'counts': [], 'percentages': [], 'color': '#B8A893'}
+    }
     
-    # Legend below table (ordered: Negative → Neutral → Positive → Mixed)
-    st.markdown("""
-    <div style="margin-top: 8px; font-size: 16px; color: #666;">
-        <span style="color: #C17D3D;">●</span> Negative &nbsp;
-        <span style="color: #8B9D83;">●</span> Neutral &nbsp;
-        <span style="color: #5C9AA5;">●</span> Positive &nbsp;
-        <span style="color: #B8A893;">●</span> Mixed
-    </div>
-    """, unsafe_allow_html=True)
+    for source in sources:
+        total = source_sentiment.loc[source, 'Total']
+        for sentiment_type in ['Negative', 'Neutral', 'Positive', 'Mixed']:
+            count = source_sentiment.loc[source].get(sentiment_type.lower(), 0)
+            pct = (count / total * 100) if total > 0 else 0
+            sentiment_data[sentiment_type]['counts'].append(count)
+            sentiment_data[sentiment_type]['percentages'].append(pct)
+    
+    # Create Plotly stacked horizontal bar chart (100% stacked)
+    fig = go.Figure()
+    
+    # Add bars for each sentiment type (in order: Negative, Neutral, Positive, Mixed)
+    for sentiment_type in ['Negative', 'Neutral', 'Positive', 'Mixed']:
+        data = sentiment_data[sentiment_type]
+        fig.add_trace(go.Bar(
+            name=sentiment_type,
+            y=sources,
+            x=data['percentages'],  # Use percentages for x-axis
+            orientation='h',
+            marker=dict(color=data['color']),
+            text=[f"{pct:.1f}% ({count})" if count > 0 else "" for count, pct in zip(data['counts'], data['percentages'])],
+            textposition='inside',
+            textfont=dict(color='white', size=13),
+            hovertemplate='<b>%{y}</b><br>' +
+                         f'{sentiment_type}: %{{customdata}} articles ' +
+                         '(%{x:.1f}%)<extra></extra>',
+            customdata=data['counts']  # Show counts in hover
+        ))
+    
+    # Update layout
+    fig.update_layout(
+        barmode='stack',
+        title=dict(
+            text='Sentiment Distribution by Source (Percentage)',
+            font=dict(size=16, color=AITREND_COLOURS['text'], family='Arial, sans-serif'),
+            x=0.5,
+            xanchor='center',
+            pad=dict(b=20)  # Add padding below title
+        ),
+        xaxis_title="Sentiment Distribution (%)",
+        yaxis_title=None,
+        height=chart_height,  # Dynamic height based on number of sources
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        margin=dict(l=20, r=20, t=80, b=60),  # Increased top margin for title spacing
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12),
+            traceorder='normal'  # Keep legend in same order as traces (Negative, Neutral, Positive, Mixed)
+        ),
+        hovermode='y unified'
+    )
+    
+    # Update axes
+    fig.update_xaxes(
+        tickfont=dict(size=14, color=AITREND_COLOURS['text']),
+        title_font=dict(size=16, color=AITREND_COLOURS['text']),
+        gridcolor='rgba(0,0,0,0.1)',
+        griddash='dot',
+        range=[0, 100],
+        ticksuffix='%'
+    )
+    
+    fig.update_yaxes(
+        tickfont=dict(size=14, color=AITREND_COLOURS['text']),
+        categoryorder='array',
+        categoryarray=sources  # Maintain sorted order
+    )
+    
+    st.plotly_chart(fig)
+    
+    # Add summary statistics table below the chart
+    summary_data = []
+    for source in sources:
+        total = source_sentiment.loc[source, 'Total']
+        share = (total / total_articles * 100)
+        summary_data.append({
+            'Source': source,
+            'Total Articles': int(total),
+            'Share of Total': f"{share:.1f}%"
+        })
+    
+    summary_df = pd.DataFrame(summary_data)
+    st.dataframe(
+        summary_df,
+        hide_index=True,
+        height=len(summary_df) * 35 + 38,  # Dynamic height: 35px per row + 38px for header
+        column_config={
+            "Source": st.column_config.TextColumn("Source", width="medium"),
+            "Total Articles": st.column_config.NumberColumn("Total Articles", width="small"),
+            "Share of Total": st.column_config.TextColumn("Share of Total", width="small")
+        }
+    )
     
     st.markdown("---")
     st.markdown("**Growth Overview**")
     
     # Parse dates for growth analysis
-    df['date_parsed'] = pd.to_datetime(df['published_date'], errors='coerce')
-    df['indexed_at_parsed'] = pd.to_datetime(df['indexed_at'], errors='coerce')
+    df['date_parsed'] = pd.to_datetime(df['published_date'], errors='coerce', utc=True)
+    df['indexed_at_parsed'] = pd.to_datetime(df['indexed_at'], errors='coerce', utc=True)
     df['date_parsed'] = df['date_parsed'].fillna(df['indexed_at_parsed'])
     
-    # Get date range
-    df_sorted = df.sort_values('date_parsed')
-    earliest_date = df_sorted['date_parsed'].min()
-    latest_date = df_sorted['date_parsed'].max()
+    # Get date range - ensure we're working with valid datetime objects only
+    df_sorted = df.dropna(subset=['date_parsed']).copy()
     
-    # Calculate monthly growth
-    df_sorted['month'] = df_sorted['date_parsed'].dt.to_period('M')
-    monthly_counts = df_sorted.groupby('month').size()
-    
-    # Display metrics
-    st.metric("Total Articles", f"{len(df)}")
-    
-    if len(monthly_counts) > 1:
-        recent_month = monthly_counts.iloc[-1]
-        prev_month = monthly_counts.iloc[-2]
-        growth = recent_month - prev_month
-        growth_pct = (growth / prev_month * 100) if prev_month > 0 else 0
-        st.metric("Latest Month", f"{recent_month} ({growth:+d}, {growth_pct:+.0f}%)")
+    if len(df_sorted) > 0:
+        # Remove timezone info for simpler handling
+        df_sorted['date_parsed'] = df_sorted['date_parsed'].dt.tz_localize(None)
+        df_sorted = df_sorted.sort_values('date_parsed')
+        
+        earliest_date = df_sorted['date_parsed'].min()
+        latest_date = df_sorted['date_parsed'].max()
+        
+        # Calculate monthly growth
+        df_sorted['month'] = df_sorted['date_parsed'].dt.to_period('M')
+        monthly_counts = df_sorted.groupby('month').size()
+        
+        # Build growth overview text
+        total_text = f"**Total Articles:** {len(df)}"
+        
+        if len(monthly_counts) > 1:
+            recent_month = monthly_counts.iloc[-1]
+            prev_month = monthly_counts.iloc[-2]
+            growth = recent_month - prev_month
+            growth_pct = (growth / prev_month * 100) if prev_month > 0 else 0
+            month_text = f"**Latest Month:** {recent_month} ({growth:+d}, {growth_pct:+.0f}%)"
+        else:
+            month_text = f"**Latest Month:** {monthly_counts.iloc[-1] if len(monthly_counts) > 0 else 0}"
+        
+        # Date range
+        if pd.notna(earliest_date) and pd.notna(latest_date):
+            date_range = f"**Date Range:** {earliest_date.strftime('%b %Y')} - {latest_date.strftime('%b %Y')}"
+        else:
+            date_range = ""
+        
+        # Display all in one line
+        st.markdown(f"{total_text} &nbsp;|&nbsp; {month_text} &nbsp;|&nbsp; {date_range}")
     else:
-        st.metric("Latest Month", f"{monthly_counts.iloc[-1] if len(monthly_counts) > 0 else 0}")
-    
-    # Date range
-    if pd.notna(earliest_date) and pd.notna(latest_date):
-        date_range = f"{earliest_date.strftime('%b %Y')} - {latest_date.strftime('%b %Y')}"
-        st.caption(date_range)
+        st.warning("No valid dates found in articles for growth analysis.")
     
     st.markdown("---")
     
@@ -1191,14 +1497,94 @@ def show_analytics_page():
         # Create word frequency dictionary for word cloud
         entity_counts = Counter(all_entities)
         
-        # Word Cloud section - full width for better visibility
-        st.subheader("Top Named Entities")
-        if all_entities and not any(df['entities'].apply(lambda x: len(x) > 0 if x else False)):
-            st.markdown("*Key topics and phrases from articles*")
-        else:
-            st.markdown("*Organizations, people, products, and locations mentioned in articles*")
+        # Top Topics Analysis section
+        st.subheader("Top Topics Analysis")
+        st.markdown("*Entities mentioned across multiple news sources (filtered to show cross-source trends)*")
         
-        # Custom color function using AITREND_COLOURS palette (teal, grey, orange)
+        # Prepare detailed topic data with sentiment analysis
+        # Apply fixed filter: minimum 2 sources (removes single-source boilerplate)
+        MIN_SOURCES = 2
+        
+        topic_details = []
+        for entity, count in entity_counts.most_common(100):  # Get top 100 for filtering
+            # Find articles containing this entity
+            articles_with_entity = df[df['entities'].apply(lambda x: entity in x if x else False)]
+            
+            if len(articles_with_entity) > 0:
+                # Get number of unique articles and sources
+                num_articles = len(articles_with_entity)
+                num_sources = articles_with_entity['source'].nunique()
+                
+                # Apply filter: require minimum 2 sources
+                if num_sources < MIN_SOURCES:
+                    continue
+                
+                # Calculate sentiment distribution
+                sentiment_dist = articles_with_entity['sentiment'].value_counts()
+                positive = sentiment_dist.get('positive', 0)
+                neutral = sentiment_dist.get('neutral', 0)
+                negative = sentiment_dist.get('negative', 0)
+                mixed = sentiment_dist.get('mixed', 0)
+                
+                # Calculate average net sentiment
+                avg_net_sentiment = articles_with_entity['net_sentiment'].mean()
+                
+                topic_details.append({
+                    'Topic': entity,
+                    'Total Mentions': count,
+                    'Articles': num_articles,
+                    'Sources': num_sources,
+                    'Positive': positive,
+                    'Neutral': neutral,
+                    'Negative': negative,
+                    'Mixed': mixed,
+                    'Avg Sentiment': avg_net_sentiment
+                })
+        
+        # Create DataFrame
+        topics_df = pd.DataFrame(topic_details)
+        
+        # Sort by total mentions
+        topics_df = topics_df.sort_values('Total Mentions', ascending=False)
+        
+        # Show count of topics after filtering
+        st.markdown(f"**Showing {len(topics_df)} cross-source topics** (minimum 2 news sources required)")
+        
+        # Interactive data table with all topics (sortable and filterable)
+        st.markdown("**Topic Statistics** (sortable - click column headers to sort)")
+        
+        # Keep numeric values for proper sorting
+        st.dataframe(
+            topics_df,
+            hide_index=True,
+            column_config={
+                "Topic": st.column_config.TextColumn("Topic", width="large"),
+                "Total Mentions": st.column_config.NumberColumn("Mentions", width="small"),
+                "Articles": st.column_config.NumberColumn("Articles", width="small", help="Number of unique articles mentioning this topic"),
+                "Sources": st.column_config.NumberColumn("Sources", width="small", help="Number of different news sources covering this topic"),
+                "Positive": st.column_config.NumberColumn("Positive", width="small"),
+                "Neutral": st.column_config.NumberColumn("Neutral", width="small"),
+                "Negative": st.column_config.NumberColumn("Negative", width="small"),
+                "Mixed": st.column_config.NumberColumn("Mixed", width="small"),
+                "Avg Sentiment": st.column_config.NumberColumn(
+                    "Avg Sentiment", 
+                    width="small",
+                    format="%.3f"  # Format as 3 decimal places
+                )
+            },
+            height=400
+        )
+        
+        st.markdown("---")
+        
+        # Word Cloud section - moved to bottom for better page flow
+        st.subheader("Topic Word Cloud")
+        if all_entities and not any(df['entities'].apply(lambda x: len(x) > 0 if x else False)):
+            st.markdown("*Visual representation of key topics and phrases*")
+        else:
+            st.markdown("*Visual representation of most mentioned organizations, people, products, and locations*")
+        
+        # Custom color function using AITREND_COLOURS palette
         def aitrend_color_func(word, font_size, position, orientation, random_state=None, **kwargs):
             import random
             # Use colors from the dashboard palette with variations
@@ -1216,60 +1602,27 @@ def show_analytics_page():
             ]
             return random.choice(colors)
         
-        # Create word cloud with better size
+        # Create high-resolution word cloud for crisp rendering
         wordcloud = WordCloud(
-            width=800, 
-            height=400,
+            width=1600,  # Doubled resolution for crispness
+            height=700,  # Doubled resolution
             background_color=AITREND_COLOURS['background'],
             color_func=aitrend_color_func,
             relative_scaling=0.5,
-            min_font_size=10,
+            min_font_size=14,  # Increased for better readability
             max_words=100,
             contour_width=0,
-            contour_color=AITREND_COLOURS['accent']
+            contour_color=AITREND_COLOURS['accent'],
+            prefer_horizontal=0.7  # More horizontal text for readability
         ).generate_from_frequencies(entity_counts)
         
-        # Display word cloud with responsive figure size
+        # Display word cloud with high-quality settings
         figsize = get_responsive_figsize(10, 5, container_fraction=1.0)
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize, dpi=150)  # Higher DPI for crispness
         ax.imshow(wordcloud, interpolation='bilinear')
         ax.axis('off')
         plt.tight_layout(pad=0)
         st.pyplot(fig)
-        
-        st.markdown("---")
-        
-        # Top 10 Topics section
-        st.subheader("Top 10 Topics")
-        st.markdown("*Most frequently mentioned entities*")
-        
-        # Get top 10 entities
-        top_10 = entity_counts.most_common(10)
-        
-        # Create HTML table with larger font size
-        table_html = """<table class="topics-table">
-    <thead>
-        <tr>
-            <th class="rank-col">#</th>
-            <th>Topic</th>
-            <th class="mentions-col">Mentions</th>
-        </tr>
-    </thead>
-    <tbody>"""
-        
-        for i, (topic, mentions) in enumerate(top_10, 1):
-            table_html += f"""
-        <tr>
-            <td class="rank-col">{i}</td>
-            <td>{topic}</td>
-            <td class="mentions-col">{mentions}</td>
-        </tr>"""
-        
-        table_html += """
-    </tbody>
-</table>"""
-        
-        st.markdown(table_html, unsafe_allow_html=True)
     else:
         st.info("No entities available for analysis.")
 
@@ -1360,10 +1713,50 @@ def format_article_date(date_str):
 
 def show_chatbot_page():
     """Chatbot page with RAG-powered conversational AI"""
-    st.header("AI Trends Chatbot")
-    st.markdown("""
-    Ask questions about artificial intelligence trends and get answers grounded in our curated news database. 
-    The chatbot uses **GPT-4.1-mini** powered by GitHub Models and retrieves information from **150+ indexed articles**.
+    
+    # Get actual article count from Azure AI Search (cached for performance)
+    @st.cache_data(ttl=300)  # Cache for 5 minutes
+    def get_article_count():
+        """Get the total number of indexed articles (filtered to June 1, 2025 onwards)"""
+        from dateutil import parser as date_parser
+        try:
+            search_client = get_search_client()
+            if search_client:
+                # Get all articles with dates
+                results = search_client.search(
+                    search_text="*", 
+                    select=["published_date"], 
+                    top=1000
+                )
+                
+                # Filter to June 1, 2025 onwards (same as Analytics page)
+                cutoff_date = datetime(2025, 6, 1)
+                filtered_count = 0
+                
+                for result in results:
+                    date_str = result.get('published_date', '')
+                    if date_str:
+                        try:
+                            article_date = date_parser.parse(date_str)
+                            if article_date.tzinfo:
+                                article_date = article_date.replace(tzinfo=None)
+                            if article_date >= cutoff_date:
+                                filtered_count += 1
+                        except:
+                            pass
+                
+                return filtered_count
+        except Exception:
+            pass
+        return 150  # Fallback to approximate count
+    
+    article_count = get_article_count()
+    
+    st.markdown(f"""
+    **Hello, I'm Dot, your AI trends assistant.** I'm here to help you explore the latest developments in artificial intelligence.  
+    I can answer questions about AI trends, technologies, and breakthroughs by searching through **{article_count} curated news articles**. 
+    
+    *Powered by GPT-4.1-mini (GitHub Models) with retrieval-augmented generation*
     """)
     
     # Initialize chatbot (with caching to avoid recreating)
@@ -1386,57 +1779,37 @@ def show_chatbot_page():
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
     
-    # Sidebar with settings
-    st.sidebar.header("Chatbot Settings")
+    # Stats and controls at the top (simplified - no sliders)
+    col_stats1, col_stats2, col_clear = st.columns([1, 1, 1.5])
     
-    # Number of articles to retrieve
-    top_k = st.sidebar.slider(
-        "Articles to retrieve",
-        min_value=5,
-        max_value=20,
-        value=15,
-        help="Number of relevant articles to use as context. For temporal queries (e.g., 'last 24 hours'), more articles = more comprehensive summary."
-    )
+    with col_stats1:
+        st.metric("Total Messages", len(st.session_state.messages))
     
-    # Temperature setting
-    temperature = st.sidebar.slider(
-        "Response creativity",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.7,
-        step=0.1,
-        help="Lower = more focused, Higher = more creative"
-    )
+    with col_stats2:
+        st.metric("Conversations", len([m for m in st.session_state.messages if m["role"] == "user"]))
     
-    st.sidebar.divider()
+    with col_clear:
+        st.write("")  # Spacer for alignment
+        # Clear conversation button
+        if st.button("Clear Conversation", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.conversation_history = []
+            st.rerun()
     
-    st.sidebar.subheader("Chat Statistics")
-    st.sidebar.metric("Total Messages", len(st.session_state.messages))
-    st.sidebar.metric("Conversations", len([m for m in st.session_state.messages if m["role"] == "user"]))
+    # Example questions in an expander
+    with st.expander("Example Questions"):
+        st.markdown("""
+        - What are the latest trends in large language models?
+        - What companies are investing in AI?
+        - Tell me about recent AI safety concerns
+        - What's happening with GPT-5?
+        - Summarize recent AI regulations
+        """)
     
-    st.sidebar.divider()
+    # Display chat history (only show divider if there are messages)
+    if st.session_state.messages:
+        st.divider()
     
-    # Clear conversation button
-    if st.sidebar.button("Clear Conversation", use_container_width=True):
-        st.session_state.messages = []
-        st.session_state.conversation_history = []
-        st.rerun()
-    
-    st.sidebar.divider()
-    
-    st.sidebar.subheader("Example Questions")
-    st.sidebar.markdown("""
-    - What are the latest trends in large language models?
-    - What companies are investing in AI?
-    - Tell me about recent AI safety concerns
-    - What's happening with GPT-5?
-    - Summarize recent AI regulations
-    """)
-    
-    # Main chat interface
-    st.divider()
-    
-    # Display chat history
     for message in st.session_state.messages:
         if message["role"] == "user":
             with st.container():
@@ -1450,36 +1823,43 @@ def show_chatbot_page():
                 """, unsafe_allow_html=True)
         else:
             with st.container():
-                # Escape the content to prevent markdown issues
-                escaped_content = message["content"].replace("$", r"\$")
+                # Content is inside HTML div, so no LaTeX processing occurs - no need to escape
                 st.markdown(f"""
                 <div style="background-color: #FEFEFE; padding: 1rem; border-radius: 8px; 
                             margin: 0.5rem 0; border-left: 4px solid {AITREND_COLOURS['positive']}; 
                             color: {AITREND_COLOURS['text']};">
-                    <strong>Assistant:</strong><br>
-                    {escaped_content}
+                    <strong>Dot:</strong><br>
+                    {message["content"]}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display sources as numbered references
+                # Display sources in an expandable section
                 if "sources" in message and message["sources"]:
-                    st.markdown("<br><strong>References:</strong>", unsafe_allow_html=True)
-                    for i, source in enumerate(message["sources"], 1):
-                        formatted_date = format_article_date(source['date'])
-                        st.markdown(f"""
-                        <div style="background-color: #F5F3EF; padding: 0.5rem 0.75rem; border-radius: 6px; 
-                                    margin: 0.3rem 0; border-left: 3px solid {AITREND_COLOURS['secondary']}; 
-                                    font-size: 0.85rem;">
-                            <strong>[{i}]</strong> <a href="{source['link']}" target="_blank" style="color: {AITREND_COLOURS['accent']}; text-decoration: none; font-weight: 600;">{source['title']}</a><br>
-                            <span style="color: #666;">{source['source']} • {formatted_date}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    with st.expander(f"View {len(message['sources'])} References", expanded=False):
+                        for i, source in enumerate(message["sources"], 1):
+                            formatted_date = format_article_date(source['date'])
+                            st.markdown(f"""
+                            <div style="background-color: #F5F3EF; padding: 0.5rem 0.75rem; border-radius: 6px; 
+                                        margin: 0.3rem 0; border-left: 3px solid {AITREND_COLOURS['secondary']}; 
+                                        font-size: 0.85rem;">
+                                <strong>[{i}]</strong> <a href="{source['link']}" target="_blank" style="color: {AITREND_COLOURS['accent']}; text-decoration: none; font-weight: 600;">{source['title']}</a><br>
+                                <span style="color: #666;">{source['source']} • {formatted_date}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
     
     # Chat input
     if chatbot is not None:
         user_input = st.chat_input("Ask a question about AI trends...")
         
         if user_input:
+            # Smart defaults: adjust retrieval based on query type
+            # Temporal queries need more articles for comprehensive summaries
+            temporal_keywords = ['last', 'past', 'this week', 'this month', 'recent', 'latest', 'today', 'yesterday', 'upcoming', 'future', 'next', 'later', 'soon', 'planned', 'expected', 'anticipated']
+            is_temporal = any(keyword in user_input.lower() for keyword in temporal_keywords)
+            
+            top_k = 15 if is_temporal else 10  # More articles for temporal/future queries
+            temperature = 0.7  # Balanced creativity/accuracy
+            
             # Add user message to history
             st.session_state.messages.append({
                 "role": "user",
@@ -1534,13 +1914,22 @@ def show_chatbot_page():
         3. Restart the Streamlit app
         """)
     
-    # Footer
-    st.divider()
-    st.markdown("""
+    # Footer (add spacing without divider)
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(f"""
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
         Powered by <strong>GPT-4.1-mini</strong> (GitHub Models) • 
         <strong>Azure AI Search</strong> • 
-        <strong>150+ AI News Articles</strong>
+        <strong>{article_count} AI News Articles</strong>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Back to top link
+    st.markdown("""
+    <div style="text-align: center; margin-top: 1.5rem;">
+        <a href="#ai-trend-monitor" style="color: #5D5346; text-decoration: none; font-size: 0.95rem;">
+            ↑ Back to Top
+        </a>
     </div>
     """, unsafe_allow_html=True)
 

@@ -7,12 +7,40 @@ from typing import Dict, List
 
 # Site-specific selectors
 SCRAPERS: Dict[str, Dict[str, str]] = {
+    # Existing sources
     'venturebeat.com': {'selector': 'div.article-body'},
     'gizmodo.com': {'selector': 'div.entry-content'},
     'techcrunch.com': {'selector': 'div.entry-content'},
     'arstechnica.com': {'selector': 'div.post-content'},
-    'theguardian.com': {'selector': 'div.article-body-commercial-selector'},  # Guardian article body
+    'theguardian.com': {'selector': 'div.article-body-commercial-selector'},
     'www.theguardian.com': {'selector': 'div.article-body-commercial-selector'},
+    
+    # New event & product launch sources
+    'www.theverge.com': {'selector': 'div.duet--article--article-body-component'},
+    'theverge.com': {'selector': 'div.duet--article--article-body-component'},
+    'www.anandtech.com': {'selector': 'div.articleContent'},
+    'anandtech.com': {'selector': 'div.articleContent'},
+    'forums.anandtech.com': {'selector': 'div.articleContent'},  # AnandTech RSS redirects here
+    'www.tomsguide.com': {'selector': 'div#article-body'},
+    'tomsguide.com': {'selector': 'div#article-body'},
+    'www.infoworld.com': {'selector': 'div.article-body'},
+    'infoworld.com': {'selector': 'div.article-body'},
+    'spectrum.ieee.org': {'selector': 'div.article-content'},
+    
+    # European & Swedish sources
+    'go.theregister.com': {'selector': 'div#body'},
+    'www.theregister.com': {'selector': 'div#body'},
+    'theregister.com': {'selector': 'div#body'},
+    'sifted.eu': {'selector': 'div.entry-content'},
+    'www.sifted.eu': {'selector': 'div.entry-content'},
+    'www.eu-startups.com': {'selector': 'div.entry-content'},
+    'eu-startups.com': {'selector': 'div.entry-content'},
+    'www.breakit.se': {'selector': 'div.article-body'},
+    'breakit.se': {'selector': 'div.article-body'},
+    'www.di.se': {'selector': 'article.article'},
+    'di.se': {'selector': 'article.article'},
+    'arcticstartup.com': {'selector': 'div.entry-content'},
+    'www.arcticstartup.com': {'selector': 'div.entry-content'},
 }
 
 # Generic selectors to try when there is no site-specific scraper
