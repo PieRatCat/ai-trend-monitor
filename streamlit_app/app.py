@@ -306,7 +306,8 @@ def show_search_interface():
     )
     
     sources = ["All Sources", "The Guardian", "techcrunch.com", "venturebeat.com", 
-              "arstechnica.com", "gizmodo.com"]
+              "arstechnica.com", "gizmodo.com", "spectrum.ieee.org", "www.theregister.com",
+              "www.theverge.com", "www.eu-startups.com"]
     source_filter = st.selectbox("Source", sources, key="search_source")
     
     sentiments = ["All Sentiments", "positive", "neutral", "negative", "mixed"]
@@ -1654,11 +1655,18 @@ def show_about_page():
     
     ### Data Sources
     
-    - The Guardian API
-    - TechCrunch RSS
-    - VentureBeat RSS
-    - Ars Technica RSS
-    - Gizmodo RSS
+    **API Sources:**
+    - The Guardian API (AI-related articles from June 2025+)
+    
+    **RSS Feeds:**
+    - TechCrunch (AI category + events + Europe)
+    - VentureBeat (AI category)
+    - Ars Technica (artificial intelligence tag)
+    - Gizmodo (AI tag)
+    - IEEE Spectrum (technology & research)
+    - The Register UK (tech news)
+    - The Verge (product launches)
+    - EU-Startups (European startup ecosystem)
     
     ### Features
     
