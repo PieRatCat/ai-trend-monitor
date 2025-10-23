@@ -1,14 +1,22 @@
 # Streamlit Configuration
 
 [theme]
-base="light"
+base = "light"
 primaryColor = "#C17D3D"  # Muted warm brown/tan - works in both modes
 backgroundColor = "#F5F3EF"  # Warm light beige (light mode background)
 secondaryBackgroundColor = "#E8E3D9"  # Slightly darker warm beige (light mode cards)
 textColor = "#2D2D2D"  # Dark charcoal grey (light mode text)
 font = "sans serif"
 
+[client]
+showErrorDetails = false
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
 [server]
 headless = true
 port = 8501
 enableXsrfProtection = true
+enableCORS = false
