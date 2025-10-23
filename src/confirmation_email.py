@@ -14,6 +14,7 @@ def send_confirmation_email(email: str, confirmation_token: str) -> bool:
     try:
         connection_string = os.getenv('AZURE_COMMUNICATION_CONNECTION_STRING')
         sender_email = os.getenv('EMAIL_SENDER')
+        base_url = os.getenv('STREAMLIT_APP_URL', 'http://localhost:8501')
         
         if not connection_string or not sender_email:
             logging.error("Email configuration missing")
@@ -21,10 +22,8 @@ def send_confirmation_email(email: str, confirmation_token: str) -> bool:
         
         email_client = EmailClient.from_connection_string(connection_string)
         
-        # Confirmation URL (update domain to your actual Streamlit URL)
-        # For local testing: http://localhost:8501/?confirm=...
-        # For production: https://your-domain.com/?confirm=...
-        confirmation_url = f"http://localhost:8501/?confirm={confirmation_token}&email={email}"
+        # Build confirmation URL with proper domain
+        confirmation_url = f"{base_url}/?confirm={confirmation_token}&email={email}"
         
         html_content = f"""
 <!DOCTYPE html>
@@ -129,13 +128,15 @@ def send_welcome_email(email: str, unsubscribe_token: str) -> bool:
     try:
         connection_string = os.getenv('AZURE_COMMUNICATION_CONNECTION_STRING')
         sender_email = os.getenv('EMAIL_SENDER')
+        base_url = os.getenv('STREAMLIT_APP_URL', 'http://localhost:8501')
         
         if not connection_string or not sender_email:
             return False
         
         email_client = EmailClient.from_connection_string(connection_string)
         
-        unsubscribe_url = f"http://localhost:8501/?unsubscribe={unsubscribe_token}&email={email}"
+        # Build unsubscribe URL with proper domain
+        unsubscribe_url = f"{base_url}/?unsubscribe={unsubscribe_token}&email={email}"
         
         html_content = f"""
 <!DOCTYPE html>
