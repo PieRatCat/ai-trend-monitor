@@ -118,7 +118,7 @@ def run_weekly_pipeline():
         # Step 9: Generate weekly report
         logging.info("--- Step 9: Generate Weekly Report ---")
         generator = WeeklyReportGenerator()
-        report = generator.generate_weekly_report()
+        report = generator.generate_full_report()
         
         if report:
             logging.info("Report generated successfully.")
