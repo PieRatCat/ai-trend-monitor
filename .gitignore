@@ -42,6 +42,5 @@ run_dashboard.py
 .github/copilot-instructions.md
 project_summary.ipynb
 
-.vscode/extensions.json
-.vscode/launch.json
-.vscode/tasks.json
+.vscode/
+
