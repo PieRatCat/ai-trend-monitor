@@ -8,6 +8,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'streamlit_app/**'
+      - 'src/**'
+      - 'config/**'
+      - 'requirements.txt'
+      - '.github/workflows/main_ai-trend-monitor.yml'
   workflow_dispatch:
 
 jobs:
