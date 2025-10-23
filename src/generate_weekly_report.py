@@ -442,19 +442,15 @@ Report generated {report_date}
                     # Convert report to HTML with personalized unsubscribe link
                     html_content = self._convert_report_to_html(report, email_address, unsubscribe_token)
                     
-                    # Build email message with friendly display name
+                    # Build email message (HTML only, no plain text fallback)
                     message = {
                         "senderAddress": sender_email,
                         "content": {
                             "subject": subject,
-                            "plainText": report,  # Fallback for plain text email clients
                             "html": html_content
                         },
                         "recipients": {
                             "to": [{"address": email_address, "displayName": "Subscriber"}]
-                        },
-                        "headers": {
-                            "From": f"AI Trend Monitor <{sender_email}>"
                         }
                     }
                     
