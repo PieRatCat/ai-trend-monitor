@@ -1,0 +1,19 @@
+# Azure Functions Deployment - Requirements
+
+# Core dependencies (from existing requirements.txt)
+requests==2.32.3
+beautifulsoup4==4.12.3
+feedparser==6.0.11
+python-dotenv==1.0.1
+azure-storage-blob==12.23.1
+azure-ai-textanalytics==5.3.0
+azure-search-documents==11.5.2
+openai==1.54.3
+azure-communication-email==1.1.0
+
+# Azure Functions runtime
+azure-functions==1.21.3
+
+# Additional dependencies for stability
+lxml==5.3.0
+charset-normalizer==3.4.0

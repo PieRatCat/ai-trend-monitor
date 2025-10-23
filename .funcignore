@@ -1,0 +1,53 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Development files
+.env
+.vscode/
+.git/
+.gitignore
+*.md
+docs/
+utilities/
+streamlit_app/
+reports/
+
+# Test files
+test_*.py
+*_test.py
+
+# Notebooks
+*.ipynb
+*.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development only
+send_weekly_email.py
+bootstrap_url_registry.py
+
+.venv

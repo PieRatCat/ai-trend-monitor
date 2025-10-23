@@ -198,6 +198,8 @@ def display_article_card(article):
                 st.markdown(f"**Date:** Unknown")
         
         content = article.get('content', '')
+        # Escape dollar signs to prevent LaTeX rendering issues
+        content = content.replace('$', r'\$')
         if len(content) > 300:
             st.markdown(f"{content[:300]}...")
         else:
@@ -213,6 +215,226 @@ def display_article_card(article):
 def get_responsive_figsize(base_width, base_height, container_fraction=1.0):
     """Return original figure size - CSS handles responsive scaling"""
     return (base_width, base_height)
+
+def show_subscribe_page():
+    """Newsletter subscription page with GDPR compliance"""
+    from src.subscriber_manager import SubscriberManager
+    from src.confirmation_email import send_confirmation_email, send_welcome_email
+    
+    st.header("Subscribe to Newsletter")
+    
+    # Handle URL parameters for confirmation/unsubscribe
+    query_params = st.query_params
+    
+    # Handle confirmation
+    if 'confirm' in query_params and 'email' in query_params:
+        confirmation_token = query_params['confirm']
+        email = query_params['email']
+        
+        try:
+            manager = SubscriberManager()
+            success = manager.confirm_subscription(email, confirmation_token)
+            
+            if success:
+                st.success("**Subscription Confirmed!**")
+                st.balloons()
+                st.markdown("""
+                Thank you for confirming your subscription to the AI Trend Monitor newsletter!
+                
+                **What happens next:**
+                - You'll receive your first newsletter next Friday at 9:00 AM UTC
+                - Weekly digests covering AI news, research, and developments
+                - You can unsubscribe anytime using the link in each email
+                """)
+                
+                # Send welcome email
+                subscriber = manager.get_subscriber(email)
+                if subscriber:
+                    send_welcome_email(email, subscriber.get('unsubscribe_token', ''))
+            else:
+                st.error("Invalid or expired confirmation link.")
+                st.info("Please try subscribing again or contact support if the problem persists.")
+        except Exception as e:
+            st.error(f"Error confirming subscription: {str(e)}")
+        
+        # Clear query params
+        st.query_params.clear()
+        return
+    
+    # Handle unsubscribe
+    if 'unsubscribe' in query_params and 'email' in query_params:
+        unsubscribe_token = query_params['unsubscribe']
+        email = query_params['email']
+        
+        try:
+            manager = SubscriberManager()
+            success = manager.unsubscribe(email, unsubscribe_token)
+            
+            if success:
+                st.success("**Unsubscribed Successfully**")
+                st.markdown("""
+                You have been unsubscribed from the AI Trend Monitor newsletter.
+                
+                We're sorry to see you go! If you change your mind, you can always subscribe again.
+                
+                **Your Data Rights (GDPR):**
+                - Your email is now marked as inactive
+                - You can request complete data deletion below
+                """)
+                
+                # Offer complete data deletion
+                if st.button("Delete My Data Completely (GDPR Right to Erasure)"):
+                    if manager.delete_subscriber(email):
+                        st.success("All your data has been permanently deleted from our systems.")
+                    else:
+                        st.error("Error deleting data. Please contact support.")
+            else:
+                st.error("Invalid unsubscribe link.")
+        except Exception as e:
+            st.error(f"Error unsubscribing: {str(e)}")
+        
+        # Clear query params
+        st.query_params.clear()
+        return
+    
+    # Normal subscription form
+    st.markdown("""
+    Stay updated with the latest AI trends, research, and developments delivered to your inbox every Friday.
+    
+    **What you'll get:**
+    - Weekly digest of AI news from trusted sources
+    - Focus on AI development, models, and research
+    - Analysis of trends and key developments
+    - No spam, no ads, just quality content
+    
+    ---
+    """)
+    
+    # Subscription form
+    with st.form("subscribe_form"):
+        email = st.text_input(
+            "Email Address",
+            placeholder="your.email@example.com",
+            help="We'll send you a confirmation email"
+        )
+        
+        st.markdown("### GDPR Consent")
+        gdpr_consent = st.checkbox(
+            "I consent to receiving the AI Trend Monitor newsletter and understand that:",
+            help="Required for GDPR compliance"
+        )
+        
+        with st.expander("Read Full Privacy Notice"):
+            st.markdown("""
+            **Data Controller:** AI Trend Monitor
+            
+            **Data Stored:**
+            - Your email address
+            - Subscription date and confirmation timestamp
+            - Email delivery status (for technical purposes only)
+            
+            **Data Location:** Microsoft Azure, Sweden region
+            
+            **Purpose:** Sending weekly AI news digest newsletter
+            
+            **Legal Basis:** Consent (GDPR Art. 6(1)(a))
+            
+            **Your Rights:**
+            - Right to access your data
+            - Right to rectification (correct your email)
+            - Right to erasure (be forgotten)
+            - Right to withdraw consent (unsubscribe)
+            - Right to data portability
+            - Right to object
+            
+            **Data Retention:**
+            - Active subscriptions: Indefinitely while subscription is active
+            - After unsubscribe: Email kept as "inactive" unless you request deletion
+            - Complete deletion: Available on request (GDPR right to erasure)
+            
+            **Data Sharing:** We never share your email with third parties
+            
+            **Security:** Data encrypted at rest and in transit using Azure security standards
+            
+            **Contact:** For data requests, email support via the About page
+            """)
+        
+        submitted = st.form_submit_button("Subscribe", type="primary")
+        
+        if submitted:
+            if not email:
+                st.error("Please enter your email address")
+            elif '@' not in email or '.' not in email:
+                st.error("Please enter a valid email address")
+            elif not gdpr_consent:
+                st.error("You must consent to receiving the newsletter (GDPR requirement)")
+            else:
+                try:
+                    manager = SubscriberManager()
+                    result = manager.create_subscription(email)
+                    
+                    if result['success']:
+                        # Send confirmation email
+                        email_sent = send_confirmation_email(
+                            email,
+                            result['confirmation_token']
+                        )
+                        
+                        if email_sent:
+                            st.success("**Subscription Initiated!**")
+                            st.info(f"""
+                            **Next Step:** Please check your email inbox at `{email}`
+                            
+                            We've sent you a confirmation email with a link to complete your subscription.
+                            
+                            **Note:** The confirmation link expires in 48 hours.
+                            
+                            *If you don't see the email, please check your spam/junk folder.*
+                            """)
+                        else:
+                            st.error("Error sending confirmation email. Please try again later.")
+                    else:
+                        # Check if this is a pending confirmation
+                        if 'already sent' in result['message'].lower():
+                            st.warning(result['message'])
+                            # Store email in session state to show resend button outside form
+                            st.session_state['pending_email'] = email
+                        else:
+                            st.warning(result['message'])
+                        
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+                    st.info("Please try again later or contact support.")
+    
+    # Resend confirmation button (outside form)
+    if 'pending_email' in st.session_state:
+        st.info("**Didn't receive the confirmation email?**")
+        if st.button("Resend Confirmation Email", key="resend_conf"):
+            try:
+                manager = SubscriberManager()
+                resend_result = manager.resend_confirmation(st.session_state['pending_email'])
+                if resend_result['success']:
+                    st.success(resend_result['message'])
+                    # Clear the session state
+                    del st.session_state['pending_email']
+                else:
+                    st.error(resend_result['message'])
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    
+    # Subscriber statistics (admin view - optional)
+    with st.expander("Subscriber Statistics", expanded=False):
+        try:
+            manager = SubscriberManager()
+            stats = manager.get_subscriber_count()
+            
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Subscribers", stats['total'])
+            col2.metric("Active", stats['active'])
+            col3.metric("Pending Confirmation", stats['pending'])
+            col4.metric("Unsubscribed", stats['unsubscribed'])
+        except Exception as e:
+            st.info("Statistics not available")
 
 def main():
     """Main application"""
@@ -266,10 +488,11 @@ def main():
     news_page = st.Page(show_news_page, title="News")
     analytics_page = st.Page(show_analytics_page, title="Analytics")
     chatbot_page = st.Page(show_chatbot_page, title="Chatbot")
+    subscribe_page = st.Page(show_subscribe_page, title="Subscribe")
     about_page = st.Page(show_about_page, title="About")
     
     # Create navigation at top
-    pg = st.navigation([news_page, analytics_page, chatbot_page, about_page], position="top")
+    pg = st.navigation([news_page, analytics_page, chatbot_page, subscribe_page, about_page], position="top")
     
     # Run the selected page
     pg.run()
@@ -485,6 +708,8 @@ def display_article_card_compact(article):
         
         # Content preview
         content = article.get('content', '')
+        # Escape dollar signs to prevent LaTeX rendering issues
+        content = content.replace('$', r'\$')
         if len(content) > 400:
             st.markdown(f"{content[:400]}...")
         else:
@@ -493,7 +718,7 @@ def display_article_card_compact(article):
         st.markdown(f"[Read More]({article['link']})")
         st.markdown("---")
 
-@st.cache_data(ttl=3600)  # Cache for 1 hour
+@st.cache_data(ttl=604800)  # Cache for 7 days (weekly refresh on Fridays)
 def generate_curated_content(section_type):
     """Generate curated content using RAG chatbot with AI-specific search"""
     from datetime import datetime
@@ -788,17 +1013,26 @@ def show_analytics_page():
         if 'entity_reset_counter' not in st.session_state:
             st.session_state.entity_reset_counter = 0
         
-        # Create columns: selection controls, viz mode, and reset button on one row
-        # Responsive: will stack on mobile
-        col_select1, col_select2, col_viz, col_clear = st.columns([1.8, 1.2, 1.5, 0.5], gap="small")
+        # Create columns: selection controls, viz mode, date range, and reset button on two rows
+        # Row 1: Entity selection and search
+        col_select1, col_select2 = st.columns([1.8, 1.2], gap="small")
         
         with col_select1:
-            # Dropdown with top 100 entities - also gets reset with counter
+            # Dropdown with top 100 entities - use key for state persistence
+            # Get the current widget key
+            dropdown_key = f"entity_dropdown_{st.session_state.entity_reset_counter}"
+            
+            # Determine default index: use widget state if it exists, otherwise 0
+            if dropdown_key in st.session_state:
+                default_index = top_100_entities.index(st.session_state[dropdown_key]) if st.session_state[dropdown_key] in top_100_entities else 0
+            else:
+                default_index = 0
+            
             selected_from_dropdown = st.selectbox(
                 "Select entity",
                 options=top_100_entities,
-                index=0,
-                key=f"entity_dropdown_{st.session_state.entity_reset_counter}"
+                index=default_index,
+                key=dropdown_key
             )
         
         with col_select2:
@@ -809,12 +1043,15 @@ def show_analytics_page():
                 key=f"entity_manual_input_{st.session_state.entity_reset_counter}"
             )
         
+        # Row 2: View mode, date range, and reset button
+        col_viz, col_date_range, col_clear = st.columns([1.5, 1.5, 0.5], gap="small")
+        
         with col_viz:
             # Visualization mode toggle on same row
             viz_mode = st.selectbox(
                 "View mode",
                 options=["Weekly", "Daily", "Cumulative"],
-                index=0,  # Default to Weekly
+                key="topic_viz_mode",
                 help="Daily Count, Cumulative Count, or Weekly Aggregation"
             )
             # Map short names to full names
@@ -825,12 +1062,21 @@ def show_analytics_page():
             }
             viz_mode = viz_mode_map[viz_mode]
         
+        with col_date_range:
+            # Date range filter
+            date_range_option = st.selectbox(
+                "Date range",
+                options=["All time", "Last 30 days"],
+                key="topic_date_range",
+                help="Filter articles by date range"
+            )
+        
         with col_clear:
             # Add some spacing to align with inputs
             st.write("")
             st.write("")
             if st.button("Reset", help="Clear search and reset"):
-                # Increment counter to force widget recreation with new key
+                # Increment counter to force widget recreation with new key (resets to index 0)
                 st.session_state.entity_reset_counter += 1
                 st.rerun()
         
@@ -904,207 +1150,216 @@ def show_analytics_page():
             # Sort by date for proper chronological display
             topic_articles = topic_articles.sort_values('date')
             
-            # Prepare data based on visualization mode
-            if viz_mode == "Daily Count":
-                # Group by date for daily article count and average sentiment
-                daily_stats = topic_articles.groupby('date_only').agg({
-                    'title': 'count',
-                    'positive_score': 'mean',
-                    'negative_score': 'mean'
-                }).reset_index()
-                daily_stats.columns = ['date', 'article_count', 'avg_positive', 'avg_negative']
-                daily_stats['net_sentiment'] = daily_stats['avg_positive'] - daily_stats['avg_negative']
-                plot_data = daily_stats
-                count_label = 'Article Count'
-                
-            elif viz_mode == "Cumulative Count":
-                # Group by date first, then calculate cumulative sum
-                daily_stats = topic_articles.groupby('date_only').agg({
-                    'title': 'count',
-                    'positive_score': 'mean',
-                    'negative_score': 'mean'
-                }).reset_index()
-                daily_stats.columns = ['date', 'article_count', 'avg_positive', 'avg_negative']
-                daily_stats['article_count'] = daily_stats['article_count'].cumsum()
-                daily_stats['net_sentiment'] = daily_stats['avg_positive'] - daily_stats['avg_negative']
-                plot_data = daily_stats
-                count_label = 'Cumulative Articles'
-                
-            elif viz_mode == "Weekly Aggregation":
-                # Add week column
-                topic_articles['week'] = topic_articles['date'].dt.to_period('W').apply(lambda x: x.start_time.date())
-                weekly_stats = topic_articles.groupby('week').agg({
-                    'title': 'count',
-                    'positive_score': 'mean',
-                    'negative_score': 'mean'
-                }).reset_index()
-                weekly_stats.columns = ['date', 'article_count', 'avg_positive', 'avg_negative']
-                weekly_stats['net_sentiment'] = weekly_stats['avg_positive'] - weekly_stats['avg_negative']
-                plot_data = weekly_stats
-                count_label = 'Articles per Week'
+            # Apply date range filter
+            if date_range_option == "Last 30 days":
+                cutoff_date_30 = datetime.now() - pd.Timedelta(days=30)
+                topic_articles = topic_articles[topic_articles['date'] >= cutoff_date_30]
             
-            # Create Plotly figure with dual y-axes
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Plot 1: Article count (left y-axis) - Line with markers
-            fig.add_trace(
-                go.Scatter(
-                    x=plot_data['date'], 
-                    y=plot_data['article_count'],
-                    name=count_label,
-                    mode='lines+markers',
-                    line=dict(color=AITREND_COLOURS['primary'], width=2.5),
-                    marker=dict(
-                        size=8, 
-                        line=dict(width=1.5, color='white'),
-                        color=AITREND_COLOURS['primary']
-                    ),
-                    hovertemplate='<b>%{x|%b %d, %Y}</b><br>' + count_label + ': %{y}<extra></extra>'
-                ),
-                secondary_y=False
-            )
-            
-            # Plot 2: Net sentiment (right y-axis) - Line with square markers
-            fig.add_trace(
-                go.Scatter(
-                    x=plot_data['date'],
-                    y=plot_data['net_sentiment'],
-                    name='Net Sentiment',
-                    mode='lines+markers',
-                    line=dict(color=AITREND_COLOURS['positive'], width=2.5),
-                    marker=dict(
-                        size=8, 
-                        symbol='square',
-                        line=dict(width=1.5, color='white'),
-                        color=AITREND_COLOURS['positive']
-                    ),
-                    hovertemplate='<b>%{x|%b %d, %Y}</b><br>Net Sentiment: %{y:.3f}<extra></extra>'
-                ),
-                secondary_y=True
-            )
-            
-            # Add horizontal line at y=0 for neutral sentiment
-            fig.add_hline(
-                y=0, 
-                line_dash="solid", 
-                line_color=AITREND_COLOURS['neutral'], 
-                line_width=2,
-                opacity=0.6,
-                secondary_y=True
-            )
-            
-            # Add shaded regions for positive/negative sentiment (constrained to [-1, 1])
-            fig.add_hrect(
-                y0=0, y1=1,
-                fillcolor=AITREND_COLOURS['positive'],
-                opacity=0.05,
-                line_width=0,
-                secondary_y=True
-            )
-            fig.add_hrect(
-                y0=-1, y1=0,
-                fillcolor=AITREND_COLOURS['negative'],
-                opacity=0.05,
-                line_width=0,
-                secondary_y=True
-            )
-            
-            # Chart title
-            mode_text = viz_mode.replace(" Count", "").replace(" Aggregation", "")
-            
-            # Update layout
-            fig.update_layout(
-                title=dict(
-                    text=f'Trend: "{selected_entity}" ({mode_text})',
-                    font=dict(size=18, color=AITREND_COLOURS['text'], family='Arial, sans-serif'),
-                    x=0.5,
-                    xanchor='center'
-                ),
-                height=450,
-                hovermode='x unified',
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="left",
-                    x=0,
-                    font=dict(size=13)
-                ),
-                margin=dict(l=70, r=70, t=90, b=70),
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                hoverlabel=dict(
-                    bgcolor="white",
-                    font_size=12,
-                    font_family="Arial, sans-serif"
-                )
-            )
-            
-            # Update y-axes
-            color_count_dark = '#A05A1F'
-            color_sentiment_dark = '#3A6B7A'
-            
-            # Left y-axis (article count) - force integer ticks with proper spacing
-            max_count = plot_data['article_count'].max()
-            if max_count <= 5:
-                tick_spacing = 1
-            elif max_count <= 10:
-                tick_spacing = 2
-            elif max_count <= 20:
-                tick_spacing = 5
+            # Check if we still have articles after filtering
+            if len(topic_articles) == 0:
+                st.info(f"No articles found for '{selected_entity}' in the selected date range.")
             else:
-                tick_spacing = int(max_count / 5)  # ~5 ticks
-            
-            fig.update_yaxes(
-                title_text=count_label,
-                title_font=dict(size=16, color=color_count_dark),
-                tickfont=dict(size=14, color=color_count_dark),
-                gridcolor='rgba(0,0,0,0.1)',
-                griddash='dot',
-                zeroline=False,
-                rangemode='tozero',
-                dtick=tick_spacing,  # Integer spacing based on data range
-                secondary_y=False
-            )
-            
-            # Right y-axis (sentiment) - constrain to [-1, 1] range
-            fig.update_yaxes(
-                title_text="Net Sentiment",
-                title_font=dict(size=16, color=color_sentiment_dark),
-                tickfont=dict(size=14, color=color_sentiment_dark),
-                zeroline=True,
-                zerolinecolor=AITREND_COLOURS['neutral'],
-                zerolinewidth=2,
-                range=[-1, 1],  # Hard limit to logical sentiment range
-                dtick=0.2,  # Show ticks at -1, -0.8, -0.6, ..., 0.8, 1
-                secondary_y=True
-            )
-            
-            # Update x-axis
-            fig.update_xaxes(
-                title_text="Publication Date",
-                title_font=dict(size=16, color=AITREND_COLOURS['text']),
-                tickfont=dict(size=14, color=AITREND_COLOURS['text']),
-                tickangle=-45,
-                showgrid=False
-            )
-            
-            # Display the chart
-            st.plotly_chart(fig)
-            
-            # Show summary statistics in single line
-            positive_count = (topic_articles['sentiment'] == 'positive').sum()
-            positive_pct = (positive_count / len(topic_articles)) * 100
-            negative_count = (topic_articles['sentiment'] == 'negative').sum()
-            negative_pct = (negative_count / len(topic_articles)) * 100
-            date_range = (topic_articles['date'].max() - topic_articles['date'].min()).days
-            
-            st.markdown(
-                f"**Total Articles:** {len(topic_articles)} &nbsp;|&nbsp; "
-                f"**Positive:** {positive_pct:.1f}% ({positive_count}) &nbsp;|&nbsp; "
-                f"**Negative:** {negative_pct:.1f}% ({negative_count}) &nbsp;|&nbsp; "
-                f"**Date Span:** {date_range} days"
-            )
+                # Prepare data based on visualization mode
+                if viz_mode == "Daily Count":
+                    # Group by date for daily article count and average sentiment
+                    daily_stats = topic_articles.groupby('date_only').agg({
+                        'title': 'count',
+                        'positive_score': 'mean',
+                        'negative_score': 'mean'
+                    }).reset_index()
+                    daily_stats.columns = ['date', 'article_count', 'avg_positive', 'avg_negative']
+                    daily_stats['net_sentiment'] = daily_stats['avg_positive'] - daily_stats['avg_negative']
+                    plot_data = daily_stats
+                    count_label = 'Article Count'
+                    
+                elif viz_mode == "Cumulative Count":
+                    # Group by date first, then calculate cumulative sum
+                    daily_stats = topic_articles.groupby('date_only').agg({
+                        'title': 'count',
+                        'positive_score': 'mean',
+                        'negative_score': 'mean'
+                    }).reset_index()
+                    daily_stats.columns = ['date', 'article_count', 'avg_positive', 'avg_negative']
+                    daily_stats['article_count'] = daily_stats['article_count'].cumsum()
+                    daily_stats['net_sentiment'] = daily_stats['avg_positive'] - daily_stats['avg_negative']
+                    plot_data = daily_stats
+                    count_label = 'Cumulative Articles'
+                    
+                elif viz_mode == "Weekly Aggregation":
+                    # Add week column
+                    topic_articles['week'] = topic_articles['date'].dt.to_period('W').apply(lambda x: x.start_time.date())
+                    weekly_stats = topic_articles.groupby('week').agg({
+                        'title': 'count',
+                        'positive_score': 'mean',
+                        'negative_score': 'mean'
+                    }).reset_index()
+                    weekly_stats.columns = ['date', 'article_count', 'avg_positive', 'avg_negative']
+                    weekly_stats['net_sentiment'] = weekly_stats['avg_positive'] - weekly_stats['avg_negative']
+                    plot_data = weekly_stats
+                    count_label = 'Articles per Week'
+                
+                # Create Plotly figure with dual y-axes
+                fig = make_subplots(specs=[[{"secondary_y": True}]])
+                
+                # Plot 1: Article count (left y-axis) - Line with markers
+                fig.add_trace(
+                    go.Scatter(
+                        x=plot_data['date'], 
+                        y=plot_data['article_count'],
+                        name=count_label,
+                        mode='lines+markers',
+                        line=dict(color=AITREND_COLOURS['primary'], width=2.5),
+                        marker=dict(
+                            size=8, 
+                            line=dict(width=1.5, color='white'),
+                            color=AITREND_COLOURS['primary']
+                        ),
+                        hovertemplate='<b>%{x|%b %d, %Y}</b><br>' + count_label + ': %{y}<extra></extra>'
+                    ),
+                    secondary_y=False
+                )
+                
+                # Plot 2: Net sentiment (right y-axis) - Line with square markers
+                fig.add_trace(
+                    go.Scatter(
+                        x=plot_data['date'],
+                        y=plot_data['net_sentiment'],
+                        name='Net Sentiment',
+                        mode='lines+markers',
+                        line=dict(color=AITREND_COLOURS['positive'], width=2.5),
+                        marker=dict(
+                            size=8, 
+                            symbol='square',
+                            line=dict(width=1.5, color='white'),
+                            color=AITREND_COLOURS['positive']
+                        ),
+                        hovertemplate='<b>%{x|%b %d, %Y}</b><br>Net Sentiment: %{y:.3f}<extra></extra>'
+                    ),
+                    secondary_y=True
+                )
+                
+                # Add horizontal line at y=0 for neutral sentiment
+                fig.add_hline(
+                    y=0, 
+                    line_dash="solid", 
+                    line_color=AITREND_COLOURS['neutral'], 
+                    line_width=2,
+                    opacity=0.6,
+                    secondary_y=True
+                )
+                
+                # Add shaded regions for positive/negative sentiment (constrained to [-1, 1])
+                fig.add_hrect(
+                    y0=0, y1=1,
+                    fillcolor=AITREND_COLOURS['positive'],
+                    opacity=0.05,
+                    line_width=0,
+                    secondary_y=True
+                )
+                fig.add_hrect(
+                    y0=-1, y1=0,
+                    fillcolor=AITREND_COLOURS['negative'],
+                    opacity=0.05,
+                    line_width=0,
+                    secondary_y=True
+                )
+                
+                # Chart title
+                mode_text = viz_mode.replace(" Count", "").replace(" Aggregation", "")
+                
+                # Update layout
+                fig.update_layout(
+                    title=dict(
+                        text=f'Trend: "{selected_entity}" ({mode_text})',
+                        font=dict(size=18, color=AITREND_COLOURS['text'], family='Arial, sans-serif'),
+                        x=0.5,
+                        xanchor='center'
+                    ),
+                    height=450,
+                    hovermode='x unified',
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="left",
+                        x=0,
+                        font=dict(size=13)
+                    ),
+                    margin=dict(l=70, r=70, t=90, b=70),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    hoverlabel=dict(
+                        bgcolor="white",
+                        font_size=12,
+                        font_family="Arial, sans-serif"
+                    )
+                )
+                
+                # Update y-axes
+                color_count_dark = '#A05A1F'
+                color_sentiment_dark = '#3A6B7A'
+                
+                # Left y-axis (article count) - force integer ticks with proper spacing
+                max_count = plot_data['article_count'].max()
+                if max_count <= 5:
+                    tick_spacing = 1
+                elif max_count <= 10:
+                    tick_spacing = 2
+                elif max_count <= 20:
+                    tick_spacing = 5
+                else:
+                    tick_spacing = int(max_count / 5)  # ~5 ticks
+                
+                fig.update_yaxes(
+                    title_text=count_label,
+                    title_font=dict(size=16, color=color_count_dark),
+                    tickfont=dict(size=14, color=color_count_dark),
+                    gridcolor='rgba(0,0,0,0.1)',
+                    griddash='dot',
+                    zeroline=False,
+                    rangemode='tozero',
+                    dtick=tick_spacing,  # Integer spacing based on data range
+                    secondary_y=False
+                )
+                
+                # Right y-axis (sentiment) - constrain to [-1, 1] range
+                fig.update_yaxes(
+                    title_text="Net Sentiment",
+                    title_font=dict(size=16, color=color_sentiment_dark),
+                    tickfont=dict(size=14, color=color_sentiment_dark),
+                    zeroline=True,
+                    zerolinecolor=AITREND_COLOURS['neutral'],
+                    zerolinewidth=2,
+                    range=[-1, 1],  # Hard limit to logical sentiment range
+                    dtick=0.2,  # Show ticks at -1, -0.8, -0.6, ..., 0.8, 1
+                    secondary_y=True
+                )
+                
+                # Update x-axis
+                fig.update_xaxes(
+                    title_text="Publication Date",
+                    title_font=dict(size=16, color=AITREND_COLOURS['text']),
+                    tickfont=dict(size=14, color=AITREND_COLOURS['text']),
+                    tickangle=-45,
+                    showgrid=False
+                )
+                
+                # Display the chart
+                st.plotly_chart(fig)
+                
+                # Show summary statistics in single line
+                positive_count = (topic_articles['sentiment'] == 'positive').sum()
+                positive_pct = (positive_count / len(topic_articles)) * 100
+                negative_count = (topic_articles['sentiment'] == 'negative').sum()
+                negative_pct = (negative_count / len(topic_articles)) * 100
+                date_range = (topic_articles['date'].max() - topic_articles['date'].min()).days
+                
+                st.markdown(
+                    f"**Total Articles:** {len(topic_articles)} &nbsp;|&nbsp; "
+                    f"**Positive:** {positive_pct:.1f}% ({positive_count}) &nbsp;|&nbsp; "
+                    f"**Negative:** {negative_pct:.1f}% ({negative_count}) &nbsp;|&nbsp; "
+                    f"**Date Span:** {date_range} days"
+                )
         else:
             st.info(f"No articles found containing the entity '{selected_entity}'")
     
@@ -1239,7 +1494,7 @@ def show_analytics_page():
         x=-0.5, y=max_y * 0.95,
         text="<b>Negative</b>",
         showarrow=False,
-        font=dict(size=13, color=color_negative_dark),
+        font=dict(size=14, color=color_negative_dark),
         yshift=0
     )
     
@@ -1247,7 +1502,7 @@ def show_analytics_page():
         x=0.5, y=max_y * 0.95,
         text="<b>Positive</b>",
         showarrow=False,
-        font=dict(size=13, color=color_positive_dark),
+        font=dict(size=14, color=color_positive_dark),
         yshift=0
     )
     
@@ -1319,9 +1574,9 @@ def show_analytics_page():
     # Prepare data for Plotly stacked bar chart
     sources = source_sentiment.index.tolist()
     num_sources = len(sources)
-    
-    # Calculate dynamic height: minimum 40px per source, minimum 400px total
-    chart_height = max(400, num_sources * 40)
+
+    # Calculate dynamic height: minimum 48px per source, minimum 400px total
+    chart_height = max(400, num_sources * 48)
     
     # Get sentiment counts and percentages for each source
     sentiment_data = {
@@ -1353,7 +1608,7 @@ def show_analytics_page():
             marker=dict(color=data['color']),
             text=[f"{pct:.1f}% ({count})" if count > 0 else "" for count, pct in zip(data['counts'], data['percentages'])],
             textposition='inside',
-            textfont=dict(color='white', size=13),
+            textfont=dict(color='white', size=14),
             hovertemplate='<b>%{y}</b><br>' +
                          f'{sentiment_type}: %{{customdata}} articles ' +
                          '(%{x:.1f}%)<extra></extra>',
@@ -1364,7 +1619,7 @@ def show_analytics_page():
     fig.update_layout(
         barmode='stack',
         title=dict(
-            text='Sentiment Distribution by Source (Percentage)',
+            text='Sentiment Distribution by Source',
             font=dict(size=16, color=AITREND_COLOURS['text'], family='Arial, sans-serif'),
             x=0.5,
             xanchor='center',
@@ -1380,9 +1635,9 @@ def show_analytics_page():
             orientation="h",
             yanchor="bottom",
             y=1.02,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=12),
+            xanchor="left",
+            x=0,
+            font=dict(size=14),
             traceorder='normal'  # Keep legend in same order as traces (Negative, Neutral, Positive, Mixed)
         ),
         hovermode='y unified'

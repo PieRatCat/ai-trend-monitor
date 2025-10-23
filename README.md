@@ -18,7 +18,7 @@ AI Trend Monitor is a comprehensive news intelligence platform that automaticall
 ## Core Features
 
 ### 📰 Automated Data Collection
-- **Multi-source aggregation**: Guardian API + 4 RSS feeds (TechCrunch, VentureBeat, Ars Technica, Gizmodo)
+- **Multi-source aggregation**: API + RSS feeds
 - **Smart deduplication**: URL-based tracking prevents redundant processing
 - **Intelligent scraping**: Site-specific content extraction with fallback strategies
 - **Date filtering**: Focused on recent trends (June 2025 onwards)
@@ -30,7 +30,7 @@ AI Trend Monitor is a comprehensive news intelligence platform that automaticall
 - **Powered by**: Azure AI Language with batched processing for efficiency
 
 ### 🔍 Semantic Search
-- **Indexed knowledge base**: 200+ articles searchable by keywords, entities, and phrases
+- **Indexed knowledge base**: 300+ articles searchable by keywords, entities, and phrases
 - **Multi-filter search**: Filter by source, sentiment, date range, and topics
 - **Fast retrieval**: Azure AI Search with keyword matching and ranking
 
@@ -38,7 +38,7 @@ AI Trend Monitor is a comprehensive news intelligence platform that automaticall
 Built with Streamlit, fully responsive across all devices:
 
 **News Page**
-- Curated recent developments and upcoming events
+- Curated news summaries
 - Article cards with sentiment indicators and key topics
 - Advanced search with multiple filters
 

@@ -5,8 +5,10 @@ requests
 # Azure services
 azure-identity
 azure-storage-blob
+azure-data-tables  # For newsletter subscriber management
 azure-ai-textanalytics
 azure-search-documents
+azure-communication-email  # Optional: For email newsletter delivery
 
 # Web scraping
 beautifulsoup4
