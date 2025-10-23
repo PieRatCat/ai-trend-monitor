@@ -31,7 +31,8 @@ sys.path.insert(0, str(project_root))
 from src.rag_chatbot import RAGChatbot
 
 # Load environment variables from .env file (local development)
-load_dotenv()
+# Explicitly point to project root .env file
+load_dotenv(project_root / '.env')
 
 # Helper function to get environment variables (supports both .env and Streamlit secrets)
 def get_env_var(key: str, default=None):
@@ -223,88 +224,6 @@ def show_subscribe_page():
     
     st.header("Subscribe to Newsletter")
     
-    # Handle URL parameters for confirmation/unsubscribe
-    query_params = st.query_params
-    
-    # Handle confirmation
-    if 'confirm' in query_params and 'email' in query_params:
-        confirmation_token = query_params['confirm']
-        email = query_params['email']
-        
-        try:
-            manager = SubscriberManager()
-            success = manager.confirm_subscription(email, confirmation_token)
-            
-            if success:
-                # Clear query params first
-                st.query_params.clear()
-                
-                st.success("**Subscription Confirmed!**")
-                st.balloons()
-                st.markdown("""
-                Thank you for confirming your subscription to the AI Trend Monitor newsletter!
-                
-                **What happens next:**
-                - You'll receive your first newsletter next Friday at 9:00 AM UTC
-                - Weekly digests covering AI news, research, and developments
-                - You can unsubscribe anytime using the link in each email
-                """)
-                
-                # Send welcome email
-                subscriber = manager.get_subscriber(email)
-                if subscriber:
-                    send_welcome_email(email, subscriber.get('unsubscribe_token', ''))
-                
-                return  # Don't show the subscription form
-            else:
-                st.error("Invalid or expired confirmation link.")
-                st.info("Please try subscribing again or contact support if the problem persists.")
-                st.query_params.clear()
-        except Exception as e:
-            st.error(f"Error confirming subscription: {str(e)}")
-            st.query_params.clear()
-        
-        # Continue to show normal form if confirmation failed
-    
-    # Handle unsubscribe
-    elif 'unsubscribe' in query_params and 'email' in query_params:
-        unsubscribe_token = query_params['unsubscribe']
-        email = query_params['email']
-        
-        try:
-            manager = SubscriberManager()
-            success = manager.unsubscribe(email, unsubscribe_token)
-            
-            # Clear query params first
-            st.query_params.clear()
-            
-            if success:
-                st.success("**Unsubscribed Successfully**")
-                st.markdown("""
-                You have been unsubscribed from the AI Trend Monitor newsletter.
-                
-                We're sorry to see you go! If you change your mind, you can always subscribe again.
-                
-                **Your Data Rights (GDPR):**
-                - Your email is now marked as inactive
-                - You can request complete data deletion below
-                """)
-                
-                # Offer complete data deletion
-                if st.button("Delete My Data Completely (GDPR Right to Erasure)"):
-                    if manager.delete_subscriber(email):
-                        st.success("All your data has been permanently deleted from our systems.")
-                    else:
-                        st.error("Error deleting data. Please contact support.")
-                
-                return  # Don't show subscription form
-            else:
-                st.error("Invalid unsubscribe link.")
-        except Exception as e:
-            st.error(f"Error unsubscribing: {str(e)}")
-        
-        # Continue to show normal form if unsubscribe failed
-    
     # Normal subscription form
     st.markdown("""
     Stay updated with the latest AI trends, research, and developments delivered to your inbox every Friday.
@@ -446,6 +365,102 @@ def show_subscribe_page():
 
 def main():
     """Main application"""
+    
+    # Handle confirmation/unsubscribe BEFORE page navigation
+    # This must happen first so links work regardless of which page loads
+    query_params = st.query_params
+    
+    # Handle email confirmation
+    if 'confirm' in query_params and 'email' in query_params:
+        from src.subscriber_manager import SubscriberManager
+        from src.confirmation_email import send_welcome_email
+        
+        confirmation_token = query_params['confirm']
+        email = query_params['email']
+        
+        try:
+            manager = SubscriberManager()
+            success = manager.confirm_subscription(email, confirmation_token)
+            
+            if success:
+                st.query_params.clear()
+                st.success("**Subscription Confirmed!**")
+                st.balloons()
+                st.markdown("""
+                Thank you for confirming your subscription to the AI Trend Monitor newsletter!
+                
+                **What happens next:**
+                - You'll receive your first newsletter next Friday at 9:00 AM UTC
+                - Weekly digests covering AI news, research, and developments
+                - You can unsubscribe anytime using the link in each email
+                
+                [← Return to Home](/)
+                """)
+                
+                # Send welcome email
+                subscriber = manager.get_subscriber(email)
+                if subscriber:
+                    send_welcome_email(email, subscriber.get('unsubscribe_token', ''))
+                
+                st.stop()  # Stop execution, don't show normal page
+            else:
+                st.error("Invalid or expired confirmation link.")
+                st.info("Please try subscribing again or contact support if the problem persists.")
+                st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
+                st.query_params.clear()
+                st.stop()
+        except Exception as e:
+            st.error(f"Error confirming subscription: {str(e)}")
+            st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
+            st.query_params.clear()
+            st.stop()
+    
+    # Handle unsubscribe
+    elif 'unsubscribe' in query_params and 'email' in query_params:
+        from src.subscriber_manager import SubscriberManager
+        
+        unsubscribe_token = query_params['unsubscribe']
+        email = query_params['email']
+        
+        try:
+            manager = SubscriberManager()
+            success = manager.unsubscribe(email, unsubscribe_token)
+            
+            st.query_params.clear()
+            
+            if success:
+                st.success("**Unsubscribed Successfully**")
+                st.markdown("""
+                You have been unsubscribed from the AI Trend Monitor newsletter.
+                
+                We're sorry to see you go! If you change your mind, you can always subscribe again.
+                
+                **Your Data Rights (GDPR):**
+                - Your email is now marked as inactive
+                - You can request complete data deletion below
+                """)
+                
+                # Offer complete data deletion
+                if st.button("Delete My Data Completely (GDPR Right to Erasure)"):
+                    if manager.delete_subscriber(email):
+                        st.success("All your data has been permanently deleted from our systems.")
+                    else:
+                        st.error("Error deleting data. Please contact support.")
+                
+                st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
+                st.stop()  # Stop execution
+            else:
+                st.error("Invalid unsubscribe link.")
+                st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
+                st.query_params.clear()
+                st.stop()
+        except Exception as e:
+            st.error(f"Error unsubscribing: {str(e)}")
+            st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
+            st.query_params.clear()
+            st.stop()
+    
+    # Normal app rendering continues below
     
     # Load custom CSS from external file
     css_file = Path(__file__).parent / "styles.css"

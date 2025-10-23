@@ -16,8 +16,14 @@ def send_confirmation_email(email: str, confirmation_token: str) -> bool:
         sender_email = os.getenv('EMAIL_SENDER')
         base_url = os.getenv('STREAMLIT_APP_URL', 'http://localhost:8501')
         
+        # Debug logging
+        logging.info(f"Attempting to send confirmation email to: {email}")
+        logging.info(f"Connection string present: {bool(connection_string)}")
+        logging.info(f"Sender email: {sender_email}")
+        logging.info(f"Base URL: {base_url}")
+        
         if not connection_string or not sender_email:
-            logging.error("Email configuration missing")
+            logging.error(f"Email configuration missing - Connection: {bool(connection_string)}, Sender: {bool(sender_email)}")
             return False
         
         email_client = EmailClient.from_connection_string(connection_string)
