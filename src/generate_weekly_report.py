@@ -444,14 +444,17 @@ Report generated {report_date}
                     
                     # Build email message with friendly display name
                     message = {
-                        "senderAddress": f"AI Trend Monitor <{sender_email}>",
-                        "recipients": {
-                            "to": [{"address": email_address}]
-                        },
+                        "senderAddress": sender_email,
                         "content": {
                             "subject": subject,
                             "plainText": report,  # Fallback for plain text email clients
                             "html": html_content
+                        },
+                        "recipients": {
+                            "to": [{"address": email_address, "displayName": "Subscriber"}]
+                        },
+                        "headers": {
+                            "From": f"AI Trend Monitor <{sender_email}>"
                         }
                     }
                     

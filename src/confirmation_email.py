@@ -101,13 +101,13 @@ def send_confirmation_email(email: str, confirmation_token: str) -> bool:
 """
         
         message = {
-            "senderAddress": f"AI Trend Monitor <{sender_email}>",
-            "recipients": {
-                "to": [{"address": email}]
-            },
+            "senderAddress": sender_email,
             "content": {
                 "subject": "Confirm your AI Trend Monitor subscription",
                 "html": html_content
+            },
+            "recipients": {
+                "to": [{"address": email}]
             }
         }
         
@@ -197,13 +197,13 @@ def send_welcome_email(email: str, unsubscribe_token: str) -> bool:
 """
         
         message = {
-            "senderAddress": f"AI Trend Monitor <{sender_email}>",
-            "recipients": {
-                "to": [{"address": email}]
-            },
+            "senderAddress": sender_email,
             "content": {
                 "subject": "Welcome to AI Trend Monitor!",
                 "html": html_content
+            },
+            "recipients": {
+                "to": [{"address": email}]
             }
         }
         
