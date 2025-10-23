@@ -236,6 +236,9 @@ def show_subscribe_page():
             success = manager.confirm_subscription(email, confirmation_token)
             
             if success:
+                # Clear query params first
+                st.query_params.clear()
+                
                 st.success("**Subscription Confirmed!**")
                 st.balloons()
                 st.markdown("""
@@ -251,24 +254,29 @@ def show_subscribe_page():
                 subscriber = manager.get_subscriber(email)
                 if subscriber:
                     send_welcome_email(email, subscriber.get('unsubscribe_token', ''))
+                
+                return  # Don't show the subscription form
             else:
                 st.error("Invalid or expired confirmation link.")
                 st.info("Please try subscribing again or contact support if the problem persists.")
+                st.query_params.clear()
         except Exception as e:
             st.error(f"Error confirming subscription: {str(e)}")
+            st.query_params.clear()
         
-        # Clear query params
-        st.query_params.clear()
-        return
+        # Continue to show normal form if confirmation failed
     
     # Handle unsubscribe
-    if 'unsubscribe' in query_params and 'email' in query_params:
+    elif 'unsubscribe' in query_params and 'email' in query_params:
         unsubscribe_token = query_params['unsubscribe']
         email = query_params['email']
         
         try:
             manager = SubscriberManager()
             success = manager.unsubscribe(email, unsubscribe_token)
+            
+            # Clear query params first
+            st.query_params.clear()
             
             if success:
                 st.success("**Unsubscribed Successfully**")
@@ -288,14 +296,14 @@ def show_subscribe_page():
                         st.success("All your data has been permanently deleted from our systems.")
                     else:
                         st.error("Error deleting data. Please contact support.")
+                
+                return  # Don't show subscription form
             else:
                 st.error("Invalid unsubscribe link.")
         except Exception as e:
             st.error(f"Error unsubscribing: {str(e)}")
         
-        # Clear query params
-        st.query_params.clear()
-        return
+        # Continue to show normal form if unsubscribe failed
     
     # Normal subscription form
     st.markdown("""

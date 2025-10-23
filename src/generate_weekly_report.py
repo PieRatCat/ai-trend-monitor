@@ -405,18 +405,21 @@ Report generated {report_date}
             manager = SubscriberManager()
             subscribers = manager.get_active_subscribers()
             
+            logging.info(f"Retrieved {len(subscribers)} active subscribers from database")
+            
             if not subscribers:
-                logging.warning("No active subscribers found. Checking .env fallback...")
+                logging.info("No subscribers in database. Using EMAIL_RECIPIENT from .env as fallback...")
                 # Fallback to .env for testing/manual recipients
                 recipient_email = os.getenv('EMAIL_RECIPIENT')
                 if recipient_email:
                     subscribers = [{'email': email.strip(), 'unsubscribe_token': ''} 
                                  for email in recipient_email.split(',')]
+                    logging.info(f"Using {len(subscribers)} recipient(s) from EMAIL_RECIPIENT environment variable")
                 else:
-                    logging.error("No subscribers and no EMAIL_RECIPIENT in .env")
+                    logging.error("No subscribers in database and no EMAIL_RECIPIENT in .env")
                     return False
             
-            logging.info(f"Found {len(subscribers)} active subscriber(s)")
+            logging.info(f"Sending newsletter to {len(subscribers)} recipient(s)")
             
         except Exception as e:
             logging.error(f"Error retrieving subscribers: {str(e)}")
