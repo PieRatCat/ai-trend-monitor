@@ -530,7 +530,7 @@ def show_search_interface():
     
     sources = ["All Sources", "The Guardian", "techcrunch.com", "venturebeat.com", 
               "arstechnica.com", "gizmodo.com", "spectrum.ieee.org", "www.theregister.com",
-              "www.theverge.com", "www.eu-startups.com"]
+              "www.theverge.com"]
     source_filter = st.selectbox("Source", sources, key="search_source")
     
     sentiments = ["All Sentiments", "positive", "neutral", "negative", "mixed"]
@@ -1921,7 +1921,6 @@ def show_about_page():
     - IEEE Spectrum (technology & research)
     - The Register UK (tech news)
     - The Verge (product launches)
-    - EU-Startups (European startup ecosystem)
     
     ### Features
     
@@ -1931,13 +1930,17 @@ def show_about_page():
     - Entity recognition  
     - Interactive analytics dashboard  
     - Source and sentiment breakdowns  
+    - RAG-powered chatbot with conversation history
+    - Email newsletter subscription system
     
     ### Project Status
     
-    **Phase 3 Complete:** Knowledge Mining with Azure AI Search  
+    **Phase 1 Complete:** Data Pipeline (Guardian API + 7 RSS feeds)  
+    **Phase 2 Complete:** NLP Analysis (Azure AI Language)  
+    **Phase 3 Complete:** Knowledge Mining (Azure AI Search)  
     **Phase 4 Complete:** Interactive Web Dashboard (this app!)  
     **Phase 5 Complete:** RAG-powered chatbot with GPT-4.1-mini  
-    **Phase 6 Planned:** Automated weekly trend reports  
+    **Phase 6 In Progress:** Automated weekly newsletter (Azure Functions deployment)  
     
     ---
     

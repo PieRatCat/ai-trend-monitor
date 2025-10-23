@@ -15,5 +15,4 @@ RSS_FEED_URLS = [
     # European Sources
     'https://techcrunch.com/tag/europe/feed/',  # TechCrunch Europe (European tech & AI)
     'https://www.theregister.com/headlines.atom',  # The Register UK (tech news with AI coverage)
-    'https://www.eu-startups.com/feed/',  # EU-Startups (European startup ecosystem)
     ]

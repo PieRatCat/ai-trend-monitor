@@ -33,8 +33,6 @@ SCRAPERS: Dict[str, Dict[str, str]] = {
     'theregister.com': {'selector': 'div#body'},
     'sifted.eu': {'selector': 'div.entry-content'},
     'www.sifted.eu': {'selector': 'div.entry-content'},
-    'www.eu-startups.com': {'selector': 'div.entry-content'},
-    'eu-startups.com': {'selector': 'div.entry-content'},
     'www.breakit.se': {'selector': 'div.article-body'},
     'breakit.se': {'selector': 'div.article-body'},
     'www.di.se': {'selector': 'article.article'},
