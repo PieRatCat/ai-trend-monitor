@@ -3,7 +3,6 @@ python-dotenv
 requests
 
 # Azure services
-azure-identity
 azure-storage-blob
 azure-data-tables  # For newsletter subscriber management
 azure-ai-textanalytics
@@ -19,7 +18,6 @@ streamlit
 plotly
 pandas
 numpy
-seaborn
 matplotlib
 scipy
 wordcloud

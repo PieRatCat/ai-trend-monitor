@@ -2,21 +2,15 @@
 
 [theme]
 base = "light"
-primaryColor = "#C17D3D"  # Muted warm brown/tan - works in both modes
-backgroundColor = "#F5F3EF"  # Warm light beige (light mode background)
-secondaryBackgroundColor = "#E8E3D9"  # Slightly darker warm beige (light mode cards)
-textColor = "#2D2D2D"  # Dark charcoal grey (light mode text)
+primaryColor = "#C17D3D"  # Accent color (orange-brown for buttons/links)
+backgroundColor = "#FFFFFF"  # Main background
+secondaryBackgroundColor = "#E8E3D9"  # Card/sidebar background (warm beige)
+textColor = "#2D2D2D"  # Primary text color
 font = "sans serif"
 
 [client]
 showErrorDetails = false
-toolbarMode = "minimal"
+toolbarMode = "viewer"  # Show menu properly
 
 [browser]
 gatherUsageStats = false
-
-[server]
-headless = true
-port = 8501
-enableXsrfProtection = true
-enableCORS = false

@@ -1,7 +1,4 @@
-"""
-AI Trend Monitor - Interactive Dashboard
-A Streamlit web application for exploring AI news trends
-"""
+"""AI Trend Monitor - Interactive Dashboard"""
 
 import streamlit as st
 import os
@@ -15,28 +12,21 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib.colors as mcolors
 from datetime import datetime
 from collections import Counter
 from wordcloud import WordCloud
 from scipy import stats
+import re
 
-# Add project root to path for imports
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
 from src.rag_chatbot import RAGChatbot
 
-# Load environment variables from .env file (local development)
-# Explicitly point to project root .env file
 load_dotenv(project_root / '.env')
 
-# Helper function to get environment variables (supports both .env and Streamlit secrets)
 def get_env_var(key: str, default=None):
-    """Get environment variable from .env, Streamlit secrets, or Azure App Settings"""
+    """Get env var from .env, Streamlit secrets, or Azure App Settings"""
     try:
         if hasattr(st, 'secrets') and key in st.secrets:
             return st.secrets[key]
@@ -44,7 +34,6 @@ def get_env_var(key: str, default=None):
         pass
     return os.getenv(key, default)
 
-# AI Trend Monitor custom color palette
 AITREND_COLOURS = {
     'primary': '#C17D3D',
     'secondary': '#A0917A',
@@ -57,14 +46,6 @@ AITREND_COLOURS = {
     'text': '#2D2D2D'
 }
 
-# Set seaborn style with AI Trend Monitor theme
-sns.set_theme(style="whitegrid", palette=[
-    AITREND_COLOURS['primary'], 
-    AITREND_COLOURS['secondary'], 
-    AITREND_COLOURS['accent'],
-    AITREND_COLOURS['positive'],
-    AITREND_COLOURS['neutral']
-])
 plt.rcParams['figure.facecolor'] = 'white'
 plt.rcParams['axes.facecolor'] = '#FEFEFE'
 plt.rcParams['text.color'] = AITREND_COLOURS['text']
@@ -72,7 +53,6 @@ plt.rcParams['axes.labelcolor'] = AITREND_COLOURS['text']
 plt.rcParams['xtick.color'] = AITREND_COLOURS['text']
 plt.rcParams['ytick.color'] = AITREND_COLOURS['text']
 
-# Page configuration
 st.set_page_config(
     page_title="AI Trend Monitor",
     page_icon="🤖",
@@ -80,10 +60,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize Azure AI Search client
 @st.cache_resource
 def get_search_client():
-    """Initialize and cache the Azure Search client"""
+    """Initialize and cache Azure Search client"""
     search_endpoint = get_env_var('SEARCH_ENDPOINT')
     search_key = get_env_var('SEARCH_KEY')
     index_name = 'ai-articles-index'
@@ -467,12 +446,10 @@ def main():
     with open(css_file) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
     
-    # Hide sidebar completely and reduce header spacing
+    
     st.html("""
     <style>
-    [data-testid="stSidebar"] {
-        display: none;
-    }
+    
     .main .block-container {
         padding-left: 3rem !important;
         padding-top: 0rem !important;
@@ -515,7 +492,7 @@ def main():
     about_page = st.Page(show_about_page, title="About")
     
     # Create navigation at top
-    pg = st.navigation([news_page, analytics_page, chatbot_page, subscribe_page, about_page], position="top")
+    pg = st.navigation([news_page, analytics_page, chatbot_page, subscribe_page, about_page], position="sidebar")
     
     # Run the selected page
     pg.run()
@@ -852,10 +829,12 @@ Focus on the AI ecosystem: who's doing what, funding, regulations, and research.
 def show_curated_sections():
     """Display curated 'New' and 'Upcoming' sections with AI-generated content"""
     
-    # Add cache clearing button
-    col1, col2 = st.columns([6, 1])
+    # Add cache clearing button aligned to the right
+    col1, col2 = st.columns([8, 1])
+    with col1:
+        st.write("")  # Empty space for alignment
     with col2:
-        if st.button("Refresh", help="Clear cache and regenerate content"):
+        if st.button("Refresh", type="primary", help="Clear cache and regenerate content"):
             generate_curated_content.clear()
             st.rerun()
     

@@ -1,11 +1,7 @@
 /* Import Libre Baskerville font */
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap');
 
-/* ============================================
-   RESPONSIVE TYPOGRAPHY - Viewport-based sizing
-   ============================================ */
-
-/* Main title - scales with viewport */
+/* === TYPOGRAPHY === */
 h1 {
     color: #5D5346 !important;
     font-weight: 700 !important;
@@ -14,7 +10,6 @@ h1 {
     font-size: clamp(1.5rem, 4vw, 2.5rem) !important;
 }
 
-/* Subheaders - scales with viewport */
 h2 {
     color: #5D5346 !important;
     font-weight: 700 !important;
@@ -31,16 +26,11 @@ h3 {
     font-size: clamp(1rem, 2.5vw, 1.4rem) !important;
 }
 
-/* Body text - responsive sizing */
 p, div, span, li {
     font-size: clamp(0.9rem, 1.5vw, 1rem) !important;
 }
 
-/* ============================================
-   RESPONSIVE CONTAINERS
-   ============================================ */
-
-/* Card-like containers with responsive padding */
+/* === CONTAINERS === */
 .stContainer {
     background-color: #E8E3D9;
     border-radius: 8px;
@@ -48,7 +38,6 @@ p, div, span, li {
     border: 1px solid #D4CFC3;
 }
 
-/* Main content area - max width for readability */
 .main .block-container {
     max-width: 1600px !important;
     margin-left: auto !important;
@@ -57,18 +46,13 @@ p, div, span, li {
     padding-right: clamp(1rem, 3vw, 3rem) !important;
 }
 
-/* On smaller screens, use full width */
 @media screen and (max-width: 1650px) {
     .main .block-container {
         max-width: 100% !important;
     }
 }
 
-/* ============================================
-   RESPONSIVE BUTTONS
-   ============================================ */
-
-/* Buttons with responsive sizing */
+/* === BUTTONS === */
 .stButton>button {
     background-color: #C17D3D;
     color: #F5F3EF;
@@ -89,11 +73,7 @@ p, div, span, li {
     background-color: #A0917A;
 }
 
-/* ============================================
-   RESPONSIVE METRICS
-   ============================================ */
-
-/* Metrics with responsive font sizes */
+/* === METRICS === */
 [data-testid="stMetricValue"] {
     color: #5D5346 !important;
     font-size: 1.1rem !important;
@@ -114,34 +94,19 @@ p, div, span, li {
     overflow: visible !important;
 }
 
-/* Prevent metric containers from clipping content */
-[data-testid="metric-container"] {
-    overflow: visible !important;
-    min-width: fit-content !important;
-}
-
-/* Ensure column containers don't clip metrics */
-[data-testid="column"] {
-    overflow: visible !important;
-}
-
-/* Prevent entire metric widget from being constrained */
+[data-testid="metric-container"],
+[data-testid="column"],
 div[data-testid="stMetric"] {
     overflow: visible !important;
     min-width: fit-content !important;
 }
 
-/* ============================================
-   SIDEBAR RESPONSIVE
-   ============================================ */
-
-/* Sidebar styling with darker beige */
+/* === SIDEBAR === */
 [data-testid="stSidebar"] {
     background-color: #E8E3D9;
     min-width: 250px !important;
 }
 
-/* Sidebar title - lighter color to match headers */
 [data-testid="stSidebar"] h1 {
     color: #5D5346 !important;
 }
@@ -150,28 +115,12 @@ div[data-testid="stMetric"] {
     font-size: clamp(0.85rem, 1.5vw, 0.95rem) !important;
 }
 
-/* ============================================
-   NAVIGATION STYLING
-   ============================================ */
-
-/* Style the navigation header background */
-.stAppHeader {
-    background-color: #E8E3D9;
-}
-
-/* Align navigation with main content container */
-[data-testid="stHeader"] {
-    padding-left: clamp(1rem, 3vw, 3rem) !important;
-}
-
-/* Fix blank space when sidebar is collapsed - ensure main content expands */
 .main .block-container {
     max-width: 90% !important;
-        padding-left: 5rem !important;
-        padding-right: 5rem !important;
+    padding-left: 5rem !important;
+    padding-right: 5rem !important;
 }
 
-/* Adjust padding when sidebar is present/collapsed */
 @media screen and (max-width: 768px) {
     .main .block-container {
         padding-left: 2rem !important;
@@ -179,11 +128,7 @@ div[data-testid="stMetric"] {
     }
 }
 
-/* ============================================
-   RESPONSIVE INPUTS & DROPDOWNS
-   ============================================ */
-
-/* Inputs and dropdowns - responsive */
+/* === INPUTS & DROPDOWNS === */
 input, textarea, select, [data-baseweb="select"] {
     color: #2D2D2D !important;
     background-color: #E8E3D9 !important;
@@ -195,11 +140,7 @@ input, textarea, select, [data-baseweb="select"] {
     background-color: #E8E3D9 !important;
 }
 
-/* ============================================
-   RESPONSIVE TABLES
-   ============================================ */
-
-/* Source statistics table - responsive */
+/* === TABLES === */
 .source-table {
     width: 100%;
     border-collapse: collapse;
@@ -247,7 +188,6 @@ input, textarea, select, [data-baseweb="select"] {
     min-width: 25px;
 }
 
-/* Topics table - responsive */
 .topics-table {
     width: 100%;
     border-collapse: collapse;
@@ -272,22 +212,15 @@ input, textarea, select, [data-baseweb="select"] {
     background-color: #F5F3EF;
 }
 
-/* Dataframe styling - increase font size */
-[data-testid="stDataFrame"] {
-    font-size: 15px !important;
-}
-
-[data-testid="stDataFrame"] table {
+[data-testid="stDataFrame"],
+[data-testid="stDataFrame"] table,
+[data-testid="stDataFrame"] th,
+[data-testid="stDataFrame"] td {
     font-size: 15px !important;
 }
 
 [data-testid="stDataFrame"] th {
-    font-size: 15px !important;
     font-weight: 600 !important;
-}
-
-[data-testid="stDataFrame"] td {
-    font-size: 15px !important;
 }
 
 .rank-col {
@@ -304,13 +237,8 @@ input, textarea, select, [data-baseweb="select"] {
     color: #C17D3D;
 }
 
-/* ============================================
-   MOBILE BREAKPOINTS - Responsive column stacking
-   ============================================ */
-
-/* Force single column layout on narrower screens */
+/* === MOBILE BREAKPOINTS === */
 @media screen and (max-width: 1200px) {
-    /* Stack 2-column layouts on medium screens */
     [data-testid="column"] {
         min-width: 100% !important;
         max-width: 100% !important;
@@ -318,7 +246,6 @@ input, textarea, select, [data-baseweb="select"] {
 }
 
 @media screen and (max-width: 1024px) {
-    /* Tablet adjustments */
     .main .block-container {
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
@@ -326,49 +253,32 @@ input, textarea, select, [data-baseweb="select"] {
 }
 
 @media screen and (max-width: 768px) {
-    /* Mobile phones */
     .main .block-container {
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
     
-    /* Larger touch targets for mobile */
     .stButton>button {
         min-height: 3rem;
         font-size: 0.9rem !important;
     }
     
-    /* Sidebar auto-collapse on mobile */
     [data-testid="stSidebar"] {
         min-width: 200px !important;
     }
 }
 
 @media screen and (max-width: 480px) {
-    /* Small mobile phones */
-    h1 {
-        font-size: 1.5rem !important;
-    }
-    
-    h2 {
-        font-size: 1.2rem !important;
-    }
-    
-    h3 {
-        font-size: 1rem !important;
-    }
+    h1 { font-size: 1.5rem !important; }
+    h2 { font-size: 1.2rem !important; }
+    h3 { font-size: 1rem !important; }
 }
 
-/* ============================================
-   CHART RESPONSIVENESS
-   ============================================ */
-
-/* Make matplotlib charts responsive */
+/* === CHARTS === */
 .stPlotlyChart {
     width: 100% !important;
 }
 
-/* Pyplot charts - maintain size on desktop, responsive on mobile */
 [data-testid="stImage"] {
     width: 100% !important;
 }
