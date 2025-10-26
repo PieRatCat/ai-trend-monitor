@@ -51,12 +51,10 @@ class WeeklyReportGenerator:
         logging.info(f"Fetching articles from past {days} days...")
         
         cutoff_date = datetime.now() - timedelta(days=days)
-        cutoff_str = cutoff_date.strftime('%Y-%m-%d')
         
-        # Search with date filter
+        # Search - get all recent articles (can't rely on Azure Search date filter with mixed formats)
         results = self.search_client.search(
             search_text="*",
-            filter=f"published_date ge '{cutoff_str}'",
             select=["title", "content", "link", "source", "published_date",
                    "sentiment_overall", "sentiment_positive_score", 
                    "sentiment_negative_score", "key_phrases", "entities"],
@@ -64,9 +62,55 @@ class WeeklyReportGenerator:
             order_by=["published_date desc"]
         )
         
-        articles = list(results)
-        logging.info(f"Retrieved {len(articles)} articles")
+        # Client-side filtering for last N days (handle mixed date formats)
+        articles = []
+        for article in results:
+            pub_date_str = article.get('published_date', '')
+            if not pub_date_str:
+                continue
+            
+            try:
+                # Try ISO format first (2025-10-20T10:15:07.00Z)
+                if 'T' in pub_date_str:
+                    pub_date = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                else:
+                    # Try RFC 822/2822 format (Mon, 20 Oct 2025 08:15:50 +0000 or GMT)
+                    from email.utils import parsedate_to_datetime
+                    # Replace GMT with +0000 for better parsing
+                    normalized = pub_date_str.replace(' GMT', ' +0000')
+                    pub_date = parsedate_to_datetime(normalized)
+                
+                # Only include articles from the last N days
+                if pub_date.replace(tzinfo=None) >= cutoff_date:
+                    articles.append(article)
+            except Exception as e:
+                # Skip articles with unparseable dates (don't log to reduce noise)
+                continue
+        
+        # Sort by date descending
+        articles.sort(key=lambda x: self._parse_date_safe(x.get('published_date', '')), reverse=True)
+        
+        logging.info(f"Retrieved {len(articles)} articles from past {days} days (filtered from search results)")
         return articles
+    
+    def _parse_date_safe(self, date_str):
+        """Safely parse date string, return datetime object or epoch"""
+        if not date_str:
+            return datetime(1970, 1, 1)
+        
+        try:
+            # Try ISO format first (2025-10-20T10:15:07.00Z)
+            if 'T' in date_str:
+                return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            else:
+                # Try RFC 822/2822 format (Mon, 20 Oct 2025 08:15:50 +0000 or GMT)
+                from email.utils import parsedate_to_datetime
+                # Replace GMT with +0000 for better parsing
+                normalized = date_str.replace(' GMT', ' +0000')
+                return parsedate_to_datetime(normalized)
+        except Exception as e:
+            # If all parsing fails, return epoch
+            return datetime(1970, 1, 1)
     
     def analyze_statistics(self, articles):
         """Generate statistical insights from articles"""
@@ -76,8 +120,23 @@ class WeeklyReportGenerator:
         all_entities = []
         for article in articles:
             entities = article.get('entities', [])
+            
+            # Parse JSON string if needed
+            if isinstance(entities, str):
+                import json
+                try:
+                    entities = json.loads(entities)
+                except:
+                    entities = []
+            
             if isinstance(entities, list):
-                all_entities.extend(entities)
+                # Entities are stored as dicts with 'text', 'category', 'confidence'
+                for entity in entities:
+                    if isinstance(entity, dict):
+                        all_entities.append(entity.get('text', ''))
+                    else:
+                        # Fallback for string entities
+                        all_entities.append(str(entity))
         
         entity_counts = Counter(all_entities)
         
@@ -228,7 +287,7 @@ CRITICAL: Do NOT use emojis, exclamation marks, or casual language. Do NOT use n
         response = self.openai_client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "You are a senior AI engineer writing a technical weekly digest for generative AI developers. Your audience works with LLMs, model training, inference optimization, and AI tools. Focus on technical developments, model releases, research breakthroughs, and tools. Be specific and professional. NEVER use emojis. Avoid repetition across sections. Complete all sentences. NEVER write introductory paragraphs like 'In the past week' or 'This week's technical digest' - start directly with the content."},
+                {"role": "system", "content": "You are a senior AI engineer writing content for an HTML email newsletter. Write ONLY the body paragraphs - no headers, no section titles, no markdown formatting. Use plain paragraphs separated by blank lines. Be technical and specific. NEVER use emojis or exclamation marks. Complete all sentences fully - the content will be truncated at max_tokens so ensure every sentence is complete before moving to the next."},
                 {"role": "user", "content": full_prompt}
             ],
             max_tokens=max_tokens,
@@ -236,6 +295,47 @@ CRITICAL: Do NOT use emojis, exclamation marks, or casual language. Do NOT use n
         )
         
         return response.choices[0].message.content.strip()
+    
+    def extract_entities_from_content(self, report_sections):
+        """Use GPT to extract key companies, products, and technologies mentioned in the generated content"""
+        # Combine all sections
+        all_content = "\n\n".join([
+            report_sections.get('executive_summary', ''),
+            report_sections.get('models_and_research', ''),
+            report_sections.get('tools_and_platforms', '')
+        ])
+        
+        prompt = f"""Read the following AI newsletter content and extract ONLY the specific companies, products, models, and technologies that are explicitly mentioned.
+
+Content:
+{all_content}
+
+List each unique entity mentioned (companies like OpenAI, products like ChatGPT, models like GPT-4, technologies like PyTorch, etc.).
+Return ONLY the entity names, one per line, no explanations, no categories, no numbering.
+Only include entities that are CLEARLY mentioned in the text above.
+"""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You extract specific entity names from text. Return only the names, one per line."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=300,
+                temperature=0
+            )
+            
+            # Parse the response into a list
+            entities_text = response.choices[0].message.content.strip()
+            entities = [line.strip() for line in entities_text.split('\n') if line.strip()]
+            
+            logging.info(f"Extracted {len(entities)} entities from generated content: {', '.join(entities[:10])}")
+            return entities
+            
+        except Exception as e:
+            logging.error(f"Failed to extract entities: {e}")
+            return []
     
     def generate_full_report(self):
         """Generate complete weekly report"""
@@ -259,27 +359,36 @@ CRITICAL: Do NOT use emojis, exclamation marks, or casual language. Do NOT use n
         
         report_sections['executive_summary'] = self.generate_report_section(
             "Executive Summary",
-            f"Write a single editorial paragraph (150-200 words) summarizing the week's most significant AI developments from ALL {stats['total_articles']} articles. Focus on the overall narrative: what's happening in AI model development, what trends are emerging, what matters for practitioners. Do NOT use numbered lists or bullet points. Write in flowing prose. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
+            f"Write a single flowing paragraph (150-200 words) summarizing the week's most significant AI developments. Focus on the overall narrative. NO section headers, NO markdown, NO bullet points - just one cohesive paragraph. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
             context,
             max_tokens=400
         )
         
         report_sections['models_and_research'] = self.generate_report_section(
             "Models and Research",
-            f"Cover ALL model releases, LLM updates, and research breakthroughs from the 'Models & Software' and 'Research & Technical' categories. Include: specific model names/versions, technical capabilities, performance improvements, architectural innovations, training techniques. This is the ONLY section covering models - be comprehensive. Write in a single flowing narrative with paragraphs - do NOT include an introductory summary paragraph or repeat the section purpose. Start directly with the technical content. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
+            f"Write 3-4 flowing paragraphs about model releases, LLM updates, and research breakthroughs. Each paragraph should be 80-120 words. Include specific model names/versions, technical capabilities, and innovations. NO section headers, NO markdown, NO bullet points. Write naturally in paragraphs. Start directly with the first model - don't introduce the section. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
             context,
             max_tokens=900
         )
         
         report_sections['tools_and_platforms'] = self.generate_report_section(
             "Tools and Platforms",
-            f"Focus exclusively on developer tools, APIs, SDKs, frameworks, and platform updates from the 'Tools & Platforms' category. Do NOT repeat any models already discussed. Cover: new APIs, integrations, workflow tools, deployment platforms. Write in a single flowing narrative with paragraphs - do NOT include an introductory summary paragraph or repeat the section purpose. Start directly with the technical content. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
+            f"Write 2-3 flowing paragraphs about developer tools, APIs, SDKs, and platforms. Each paragraph 80-120 words. Cover new features, integrations, and updates. NO section headers, NO markdown, NO bullet points. Write naturally in paragraphs. Start directly with the first tool - don't introduce the section. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
             context,
             max_tokens=600
         )
         
+        # Step 4.5: Extract key entities mentioned in the generated content
+        logging.info("Extracting key entities from generated content...")
+        key_entities = self.extract_entities_from_content(report_sections)
+        stats['content_entities'] = key_entities  # Add to stats for entity linking
+        
         # Step 5: Compile full report
         report = self.compile_report(report_sections, stats, articles)
+        
+        # Store for email HTML generation
+        self.last_report_sections = report_sections
+        self.last_stats = stats
         
         logging.info("=== Report Generation Complete ===")
         return report
@@ -443,7 +552,12 @@ Report generated {report_date}
                     unsubscribe_token = subscriber.get('unsubscribe_token', '')
                     
                     # Convert report to HTML with personalized unsubscribe link
-                    html_content = self._convert_report_to_html(report, email_address, unsubscribe_token)
+                    html_content = self._convert_report_to_html(
+                        self.last_report_sections, 
+                        self.last_stats,
+                        email_address, 
+                        unsubscribe_token
+                    )
                     
                     # Build email message (HTML only, no plain text fallback)
                     message = {
@@ -476,40 +590,6 @@ Report generated {report_date}
             logging.error(f"Failed to send email: {str(e)}")
             print(f"\n✗ Email sending failed: {str(e)}")
             return False
-    
-    def _convert_report_to_html(self, report, recipient_email='', unsubscribe_token=''):
-        """Convert markdown report to HTML for email with personalized unsubscribe link"""
-        # Parse the report sections
-        lines = report.split('\n')
-        
-        # Extract header info
-        week_info = ""
-        article_count = ""
-        for line in lines[:10]:
-            if "Week of" in line:
-                week_info = line.strip()
-            elif "Analysis of" in line:
-                article_count = line.strip()
-        
-        # Extract sections
-        sections = {}
-        current_section = None
-        current_content = []
-        
-        for line in lines:
-            if line.strip() and line.strip().startswith('━'):
-                continue
-            elif line.strip() in ['EXECUTIVE SUMMARY', 'MODELS AND RESEARCH', 'TOOLS AND PLATFORMS', 'KEY RESOURCES']:
-                if current_section and current_content:
-                    sections[current_section] = '\n'.join(current_content)
-                current_section = line.strip()
-                current_content = []
-            elif current_section:
-                current_content.append(line)
-        
-        # Add last section
-        if current_section and current_content:
-            sections[current_section] = '\n'.join(current_content)
     
     def _markdown_to_html(self, text):
         """Convert markdown formatting to HTML"""
@@ -554,39 +634,84 @@ Report generated {report_date}
         
         return '\n'.join(html_parts)
     
-    def _convert_report_to_html(self, report, recipient_email='', unsubscribe_token=''):
-        """Convert markdown report to HTML for email with personalized unsubscribe link"""
-        # Parse the report sections
-        lines = report.split('\n')
+    def _add_entity_links(self, html_content, top_entities, dashboard_url="https://trends.goblinsen.se"):
+        """Add clickable links to entity mentions that search the dashboard"""
+        import re
+        from urllib.parse import quote
         
-        # Extract header info
-        week_info = ""
-        article_count = ""
-        for line in lines[:10]:
-            if "Week of" in line:
-                week_info = line.strip()
-            elif "Analysis of" in line:
-                article_count = line.strip()
+        # Handle both list formats: [(entity, count), ...] or [entity, ...]
+        # If it's a list of strings (from GPT), use them directly
+        if top_entities and isinstance(top_entities[0], str):
+            entities_to_process = top_entities[:50]
+        else:
+            # If it's a list of tuples (from database), extract entity names
+            entities_to_process = [entity for entity, count in top_entities[:50]]
         
-        # Extract sections
-        sections = {}
-        current_section = None
-        current_content = []
+        # Get top entities with better filtering
+        # Filter out generic/numeric entities and common words
+        filtered_entities = []
+        generic_terms = {
+            # Generic words (but allow specific product names like "Atlas", "Copilot")
+            'one', 'two', 'three', 'new', 'first', 'second', 'third', 
+            'technology', 'company', 'companies', 'product', 'products',
+            'feature', 'features', 'update', 'updates', 'release', 'releases',
+            'users', 'user', 'now', 'today', 'week', 'month', 'year',
+            'tech resources', 'data', 'system', 'systems', 'service', 'services',
+            # Countries/regions
+            'us', 'uk', 'eu', 'china', 'japan',
+        }
         
-        for line in lines:
-            if line.strip() and line.strip().startswith('━'):
+        for entity in entities_to_process:  # Check more entities
+            entity_lower = entity.lower()
+            
+            # Skip if:
+            # - Too short (unless it's an acronym like "AI")
+            # - All digits or contains $ or % 
+            # - Generic term
+            # - Starts with a number
+            if (len(entity) <= 2 and entity_lower != 'ai' or
+                entity.replace(',', '').replace('.', '').isdigit() or
+                '$' in entity or '%' in entity or
+                entity_lower in generic_terms or
+                entity[0].isdigit()):
                 continue
-            elif line.strip() in ['EXECUTIVE SUMMARY', 'MODELS AND RESEARCH', 'TOOLS AND PLATFORMS', 'KEY RESOURCES']:
-                if current_section and current_content:
-                    sections[current_section] = '\n'.join(current_content)
-                current_section = line.strip()
-                current_content = []
-            elif current_section:
-                current_content.append(line)
+            
+            # Add to filtered list
+            filtered_entities.append(entity)
+            if len(filtered_entities) >= 30:  # Get up to 30 entities
+                break
         
-        # Add last section
-        if current_section and current_content:
-            sections[current_section] = '\n'.join(current_content)
+        # Sort by length (longest first) to avoid partial matches
+        filtered_entities.sort(key=len, reverse=True)
+        
+        for entity in filtered_entities:
+            # Create case-insensitive pattern that matches whole words
+            # Avoid matching if already inside an HTML tag or existing link
+            pattern = r'(?<![<"/])(\b' + re.escape(entity) + r'\b)(?![^<]*>|[^<]*</a>)'
+            
+            # Create search URL
+            search_url = f"{dashboard_url}?search={quote(entity)}"
+            replacement = rf'<a href="{search_url}" style="color: #0066cc; text-decoration: none; border-bottom: 1px dotted #0066cc;">\1</a>'
+            
+            # Replace only the first 3 occurrences of each entity to avoid over-linking
+            html_content = re.sub(pattern, replacement, html_content, count=3, flags=re.IGNORECASE)
+        
+        return html_content
+    
+    def _convert_report_to_html(self, report_sections, stats, recipient_email='', unsubscribe_token=''):
+        """Convert report sections dict to HTML for email with personalized unsubscribe link"""
+        
+        # Extract header info from stats
+        report_date = datetime.now().strftime('%B %d, %Y')
+        week_start = (datetime.now() - timedelta(days=7)).strftime('%B %d, %Y')
+        week_info = f"Week of {week_start} - {report_date}"
+        
+        # Get article counts by category
+        from src.generate_weekly_report import WeeklyReportGenerator
+        temp_gen = WeeklyReportGenerator()
+        articles = temp_gen.get_weekly_articles(days=7)
+        categories = temp_gen.categorize_articles(articles)
+        article_count = f"Analysis of {stats['total_articles']} articles: {len(categories['models_software'])} model/software releases, {len(categories['research_technical'])} research papers, {len(categories['tools_platforms'])} tool updates."
         
         # Build HTML
         html_template = f"""
@@ -748,10 +873,16 @@ Report generated {report_date}
         <div class="content">
 """
         
-        # Add each section with proper formatting
-        if 'EXECUTIVE SUMMARY' in sections:
-            content = sections['EXECUTIVE SUMMARY'].strip()
+        # Get articles and categorize them for source links
+        articles = self.get_weekly_articles(days=7)
+        categories = self.categorize_articles(articles)
+        
+        # Add each section with proper formatting and entity links
+        if 'executive_summary' in report_sections:
+            content = report_sections['executive_summary'].strip()
             formatted_content = self._markdown_to_html(content)
+            # Add clickable entity links to dashboard
+            formatted_content = self._add_entity_links(formatted_content, stats.get('content_entities', stats['top_entities']))
             
             html_template += f"""
             <div class="section">
@@ -762,9 +893,11 @@ Report generated {report_date}
             </div>
 """
         
-        if 'MODELS AND RESEARCH' in sections:
-            content = sections['MODELS AND RESEARCH'].strip()
+        if 'models_and_research' in report_sections:
+            content = report_sections['models_and_research'].strip()
             formatted_content = self._markdown_to_html(content)
+            # Add clickable entity links to dashboard
+            formatted_content = self._add_entity_links(formatted_content, stats.get('content_entities', stats['top_entities']))
             
             html_template += f"""
             <div class="section">
@@ -775,9 +908,11 @@ Report generated {report_date}
             </div>
 """
         
-        if 'TOOLS AND PLATFORMS' in sections:
-            content = sections['TOOLS AND PLATFORMS'].strip()
+        if 'tools_and_platforms' in report_sections:
+            content = report_sections['tools_and_platforms'].strip()
             formatted_content = self._markdown_to_html(content)
+            # Add clickable entity links to dashboard
+            formatted_content = self._add_entity_links(formatted_content, stats.get('content_entities', stats['top_entities']))
             
             html_template += f"""
             <div class="section">
@@ -788,83 +923,36 @@ Report generated {report_date}
             </div>
 """
         
-        # Parse KEY RESOURCES section for structured display
-        if 'KEY RESOURCES' in sections:
-            resources_content = sections['KEY RESOURCES'].strip()
-            lines = resources_content.split('\n')
-            
-            most_mentioned = ""
-            top_sources = ""
-            sentiment = ""
-            articles = []
-            
-            current_article = {}
-            for line in lines:
-                line = line.strip()
-                if line.startswith('Most mentioned:'):
-                    most_mentioned = line.replace('Most mentioned:', '').strip()
-                elif line.startswith('Top sources:'):
-                    top_sources = line.replace('Top sources:', '').strip()
-                elif line.startswith('Sentiment:'):
-                    sentiment = line.replace('Sentiment:', '').strip()
-                elif line.startswith('Selected technical articles:'):
-                    continue
-                elif line and line[0].isdigit() and '. ' in line:
-                    if current_article:
-                        articles.append(current_article)
-                    current_article = {'title': line.split('. ', 1)[1] if '. ' in line else line}
-                elif line.startswith('Source:'):
-                    current_article['source'] = line.replace('Source:', '').strip()
-                elif line.startswith('Link:'):
-                    current_article['link'] = line.replace('Link:', '').strip()
-            
-            if current_article:
-                articles.append(current_article)
-            
-            # Build metrics HTML - only show non-empty values
-            metrics_html = f"""
+        # Add metrics section
+        top_sources_list = ', '.join([source for source, _ in stats.get('source_distribution', {}).items()][:5])
+        
+        # Format sentiment
+        total = stats['total_articles']
+        sentiment_text = f"{stats['sentiment_distribution'].get('positive', 0)} positive ({stats['sentiment_distribution'].get('positive', 0)/total*100:.0f}%), {stats['sentiment_distribution'].get('neutral', 0)} neutral ({stats['sentiment_distribution'].get('neutral', 0)/total*100:.0f}%), {stats['sentiment_distribution'].get('negative', 0)} negative ({stats['sentiment_distribution'].get('negative', 0)/total*100:.0f}%)"
+        
+        html_template += f"""
             <div class="resources">
-                <h3>This Week's Metrics</h3>"""
-            
-            if most_mentioned and most_mentioned != "No entities extracted this week":
-                metrics_html += f"""
-                <p><strong>Most Mentioned:</strong> {most_mentioned}</p>"""
-            
-            if top_sources:
-                metrics_html += f"""
-                <p><strong>Top Sources:</strong> {top_sources}</p>"""
-            
-            if sentiment:
-                metrics_html += f"""
-                <p><strong>Sentiment:</strong> {sentiment}</p>"""
-            
-            metrics_html += """
+                <h3>This Week's Metrics</h3>
+                <p><strong>Top Sources:</strong> {top_sources_list}</p>
+                <p><strong>Sentiment:</strong> {sentiment_text}</p>
             </div>
 """
-            
-            html_template += metrics_html
-            
-            if articles:
-                html_template += """
-            <div class="section">
-                <h2 class="section-title">Selected Technical Articles</h2>
-                <ul class="article-list">
-"""
-                for article in articles[:5]:
-                    title = article.get('title', 'Untitled')
-                    source = article.get('source', 'Unknown')
-                    link = article.get('link', '#')
-                    
-                    html_template += f"""
-                    <li>
-                        <div class="article-title">{title}</div>
-                        <div class="article-source">Source: {source}</div>
-                        <div class="article-link"><a href="{link}">Read article →</a></div>
-                    </li>
-"""
-                
-                html_template += """
+        
+        # Add call-to-action to explore dashboard
+        dashboard_url = "https://trends.goblinsen.se"
+        html_template += f"""
+            <div class="section" style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-top: 30px;">
+                <h3 style="margin-top: 0; color: #000000;">Explore More on the Dashboard</h3>
+                <p style="margin-bottom: 15px;">Click on any highlighted topic above to search our full archive, or visit the interactive dashboard to:</p>
+                <ul style="margin-bottom: 15px; line-height: 1.8;">
+                    <li>Search and filter {stats['total_articles']} articles</li>
+                    <li>Analyze sentiment trends over time</li>
+                    <li>Chat with AI about recent developments</li>
+                    <li>Explore topic evolution and entity relationships</li>
                 </ul>
+                <p style="text-align: center; margin-top: 20px;">
+                    <a href="{dashboard_url}" style="display: inline-block; background-color: #0066cc; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: 600;">Visit Dashboard →</a>
+                </p>
             </div>
 """
         
@@ -878,7 +966,8 @@ Report generated {report_date}
             <p>Report generated {report_date}</p>
             <p style="margin-top: 15px; font-size: 13px;">
                 This is an automated weekly digest of AI development news.
-            </p>"""
+            </p>
+"""
         
         # Add unsubscribe link if subscriber info provided (GDPR requirement)
         if recipient_email and unsubscribe_token:

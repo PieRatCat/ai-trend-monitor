@@ -502,14 +502,21 @@ def show_news_page():
     """News page with search and curated sections"""
     st.header("AI News & Updates")
     
-    col_curated, col_search = st.columns([1.6, 1], gap="medium")
+    # Check for search query parameter from email links
+    query_params = st.query_params
+    if 'search' in query_params:
+        # Pre-populate search with entity from email
+        search_term = query_params['search']
+        if 'email_search_term' not in st.session_state:
+            st.session_state.email_search_term = search_term
     
-    with col_curated:
-        show_curated_sections()
+    # Single column layout: Search at top, then curated content below
+    st.subheader("Search Articles")
+    show_search_interface()
     
-    with col_search:
-        st.subheader("Search Articles")
-        show_search_interface()
+    st.markdown("---")  # Divider between sections
+    
+    show_curated_sections()
 
 def show_search_interface():
     """Search interface component"""
@@ -523,8 +530,18 @@ def show_search_interface():
     if 'last_sentiment' not in st.session_state:
         st.session_state.last_sentiment = "All Sentiments"
     
+    # Check if coming from email link with search parameter
+    default_query = ""
+    auto_search = False  # Flag to trigger search automatically
+    if 'email_search_term' in st.session_state:
+        default_query = st.session_state.email_search_term
+        auto_search = True  # Trigger search automatically
+        # Clear after using so it doesn't persist
+        del st.session_state.email_search_term
+    
     query = st.text_input(
         "Search keywords",
+        value=default_query,  # Pre-populate from email link
         placeholder="e.g., machine learning, ChatGPT, AI ethics...",
         help="Enter keywords to search articles"
     )
@@ -553,7 +570,7 @@ def show_search_interface():
         st.session_state.last_sentiment = sentiment_filter
         st.session_state.last_date_filter = date_filter
     
-    if st.button("Search", type="primary") or query:
+    if st.button("Search", type="primary") or query or auto_search:
         with st.spinner("Searching articles..."):
             results = search_articles(
                 query if query else "*",
