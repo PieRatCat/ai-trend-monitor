@@ -114,6 +114,7 @@ def search_articles(query_text, source_filter=None, sentiment_filter=None, top=2
         st.error(f"Search error: {str(e)}")
         return []
 
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_all_articles():
     """Retrieve all articles filtered to June 1, 2025 onwards"""
     from dateutil import parser as date_parser
@@ -841,8 +842,8 @@ def show_curated_sections():
     # AI Products & Models Section
     st.subheader("AI Products & Models")
     
-    with st.spinner("Generating AI product and model updates..."):
-        products_content = generate_curated_content("products")
+    # Get cached content (or generate if not cached)
+    products_content = generate_curated_content("products")
     
     if products_content:
         st.markdown(f"""
@@ -871,8 +872,8 @@ def show_curated_sections():
     # AI Industry News Section
     st.subheader("AI Industry News")
     
-    with st.spinner("Generating AI industry updates..."):
-        industry_content = generate_curated_content("industry")
+    # Get cached content (or generate if not cached)
+    industry_content = generate_curated_content("industry")
     
     if industry_content:
         st.markdown(f"""
@@ -900,8 +901,8 @@ def show_analytics_page():
     """Analytics and visualizations page"""
     st.header("AI News Analytics")
     
-    with st.spinner("Loading analytics data..."):
-        articles = get_all_articles()
+    # Get cached articles
+    articles = get_all_articles()
     
     if not articles:
         st.warning("No data available for analytics.")

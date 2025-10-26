@@ -28,8 +28,9 @@ def send_confirmation_email(email: str, confirmation_token: str) -> bool:
         
         email_client = EmailClient.from_connection_string(connection_string)
         
-        # Build confirmation URL with proper domain
-        confirmation_url = f"{base_url}/?confirm={confirmation_token}&email={email}"
+        # Build confirmation URL with proper domain (strip trailing slash to avoid double slashes)
+        base_url_clean = base_url.rstrip('/')
+        confirmation_url = f"{base_url_clean}/?confirm={confirmation_token}&email={email}"
         
         html_content = f"""
 <!DOCTYPE html>
@@ -141,8 +142,9 @@ def send_welcome_email(email: str, unsubscribe_token: str) -> bool:
         
         email_client = EmailClient.from_connection_string(connection_string)
         
-        # Build unsubscribe URL with proper domain
-        unsubscribe_url = f"{base_url}/?unsubscribe={unsubscribe_token}&email={email}"
+        # Build unsubscribe URL with proper domain (strip trailing slash to avoid double slashes)
+        base_url_clean = base_url.rstrip('/')
+        unsubscribe_url = f"{base_url_clean}/?unsubscribe={unsubscribe_token}&email={email}"
         
         html_content = f"""
 <!DOCTYPE html>

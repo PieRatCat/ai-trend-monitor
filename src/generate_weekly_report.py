@@ -849,7 +849,9 @@ Report generated {report_date}
         # Add unsubscribe link if subscriber info provided (GDPR requirement)
         if recipient_email and unsubscribe_token:
             base_url = os.getenv('STREAMLIT_APP_URL', 'http://localhost:8501')
-            unsubscribe_url = f"{base_url}/?unsubscribe={unsubscribe_token}&email={recipient_email}"
+            # Strip trailing slash to avoid double slashes in URL
+            base_url_clean = base_url.rstrip('/')
+            unsubscribe_url = f"{base_url_clean}/?unsubscribe={unsubscribe_token}&email={recipient_email}"
             html_template += f"""
             <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #cccccc; font-size: 12px;">
                 <a href="{unsubscribe_url}" style="color: #666666;">Unsubscribe</a> | 
