@@ -217,7 +217,6 @@ ai-trend-monitor/
 │   │   └── config.toml     # Theme and server settings
 │   ├── app.py              # Main dashboard (News, Analytics, Chat, Subscribe, About)
 │   └── styles.css          # Responsive design styles (350 lines)
-├── utilities/              # Helper scripts
 ├── function_app.py         # Azure Functions timer trigger
 ├── host.json               # Azure Functions configuration
 ├── run_pipeline.py         # Main orchestration script
