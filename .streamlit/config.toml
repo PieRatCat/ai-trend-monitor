@@ -1,0 +1,16 @@
+# Streamlit Configuration
+
+[theme]
+base = "light"
+primaryColor = "#C17D3D"  # Accent color (orange-brown for buttons/links)
+backgroundColor = "#FFFFFF"  # Main background
+secondaryBackgroundColor = "#E8E3D9"  # Card/sidebar background (warm beige)
+textColor = "#2D2D2D"  # Primary text color
+font = "sans serif"
+
+[client]
+showErrorDetails = false
+toolbarMode = "viewer"  # Show menu properly
+
+[browser]
+gatherUsageStats = false
