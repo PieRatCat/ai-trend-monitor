@@ -553,6 +553,40 @@ Report generated {report_date}
                 html_parts.append(f'<p>{para}</p>')
         
         return '\n'.join(html_parts)
+    
+    def _convert_report_to_html(self, report, recipient_email='', unsubscribe_token=''):
+        """Convert markdown report to HTML for email with personalized unsubscribe link"""
+        # Parse the report sections
+        lines = report.split('\n')
+        
+        # Extract header info
+        week_info = ""
+        article_count = ""
+        for line in lines[:10]:
+            if "Week of" in line:
+                week_info = line.strip()
+            elif "Analysis of" in line:
+                article_count = line.strip()
+        
+        # Extract sections
+        sections = {}
+        current_section = None
+        current_content = []
+        
+        for line in lines:
+            if line.strip() and line.strip().startswith('━'):
+                continue
+            elif line.strip() in ['EXECUTIVE SUMMARY', 'MODELS AND RESEARCH', 'TOOLS AND PLATFORMS', 'KEY RESOURCES']:
+                if current_section and current_content:
+                    sections[current_section] = '\n'.join(current_content)
+                current_section = line.strip()
+                current_content = []
+            elif current_section:
+                current_content.append(line)
+        
+        # Add last section
+        if current_section and current_content:
+            sections[current_section] = '\n'.join(current_content)
         
         # Build HTML
         html_template = f"""

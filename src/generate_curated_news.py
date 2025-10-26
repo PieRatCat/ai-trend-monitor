@@ -47,9 +47,9 @@ DO NOT include:
 - Generic tech products
 
 List 5 SOFTWARE/MODEL items in this format:
-<li><strong>Product/Model Name:</strong> Brief description of the software or model update</li>
+<li><strong>Product/Model Name:</strong> 2-3 sentence description with specific technical details, capabilities, and what makes it notable. Include dates if mentioned in articles.</li>
 
-Focus on practical AI tools and models that developers and practitioners use."""
+Focus on practical AI tools and models that developers and practitioners use. Be specific and detailed."""
     else:  # industry
         query = """What are the most recent AI INDUSTRY developments mentioned in the articles?
 
@@ -68,9 +68,9 @@ DO NOT include:
 - Business news from non-AI companies
 
 List 5 INDUSTRY items in this format:
-<li><strong>Company/Topic:</strong> Brief description of the industry development</li>
+<li><strong>Company/Topic:</strong> 2-3 sentence description with specific details about what happened, why it matters, and any relevant numbers or dates.</li>
 
-Focus on the AI ecosystem: who's doing what, funding, regulations, and research."""
+Focus on the AI ecosystem: who's doing what, funding, regulations, and research. Be specific and detailed."""
     
     result = chatbot.chat(query, top_k=15, temperature=0.5, search_override=ai_search_override)
     answer = result["answer"]
