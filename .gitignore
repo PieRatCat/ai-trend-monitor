@@ -18,6 +18,9 @@ ENV/
 *.log
 logs/
 
+# Reports (generated automatically, saved to Azure)
+reports/
+
 # OS files
 .DS_Store
 Thumbs.db
