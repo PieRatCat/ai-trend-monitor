@@ -94,6 +94,16 @@ def run_data_pipeline():
     indexed_count = index_articles(analyzed_articles)
     logging.info(f"Indexed {indexed_count} articles in search index.")
     
+    # Step 9: Generate curated news content
+    logging.info("\n--- Generating curated news content ---")
+    try:
+        from src.generate_curated_news import main as generate_curated_news
+        generate_curated_news()
+        logging.info("Curated news content generated and saved.")
+    except Exception as e:
+        logging.error(f"Failed to generate curated news: {e}")
+        # Don't fail the pipeline if curated content generation fails
+    
     logging.info(f"\nPipeline Finished Successfully.")
 
 if __name__ == '__main__':

@@ -719,183 +719,83 @@ def display_article_card_compact(article):
         st.markdown(f"[Read More]({article['link']})")
         st.markdown("---")
 
-@st.cache_data(ttl=604800)  # Cache for 7 days (weekly refresh on Fridays)
-def generate_curated_content(section_type):
-    """Generate curated content using RAG chatbot with AI-specific search"""
+def load_curated_content_from_blob(section_type):
+    """Load pre-generated curated content from Azure Blob Storage"""
     from datetime import datetime
-    from dateutil import parser as date_parser
-    import re
+    import json
+    from azure.storage.blob import BlobServiceClient
     
     try:
-        chatbot = RAGChatbot()
-        current_date = datetime.now()
+        connection_string = get_env_var('AZURE_STORAGE_CONNECTION_STRING')
+        if not connection_string:
+            return None, None
         
-        # Use targeted AI keywords to filter at retrieval level
-        ai_search_override = "GPT ChatGPT Claude LLM model OpenAI Anthropic machine learning neural network deep learning generative AI"
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        container_name = "curated-content"
+        blob_name = f"curated_{section_type}.json"
         
-        if section_type == "products":
-            # Focus on software, models, tools, APIs
-            query = """What are the most recent AI SOFTWARE and MODEL developments mentioned in the articles?
-
-STRICT RULES - Only include if it's about:
-- AI models (GPT-5, Claude 4, Gemini updates, new LLMs, model releases)
-- AI/ML software tools (ChatGPT features, API updates, ML libraries, frameworks)
-- Generative AI applications (image/video/audio generation tools)
-- AI development platforms (ML platforms, AI SDKs, developer tools)
-- AI model capabilities (new features, performance improvements, fine-tuning)
-
-DO NOT include:
-- General business news or company announcements without product details
-- AI hardware or chips (save for industry section)
-- Funding or investment news without product specifics
-- Regulatory or policy news
-- Generic tech products
-
-List 5 SOFTWARE/MODEL items in this format:
-<li><strong>Product/Model Name:</strong> Brief description of the software or model update</li>
-
-Focus on practical AI tools and models that developers and practitioners use."""
-            temperature = 0.5
-        else:  # industry
-            # Focus on companies, funding, regulations, research
-            query = """What are the most recent AI INDUSTRY developments mentioned in the articles?
-
-STRICT RULES - Only include if it's about:
-- AI company news (OpenAI, Anthropic, Google AI, DeepMind, etc.)
-- AI startup funding, acquisitions, or launches
-- AI research breakthroughs or academic papers
-- AI regulation, policy, or ethics discussions
-- AI chip/hardware manufacturers (NVIDIA, AMD, specialized AI chips)
-- Major AI partnerships or collaborations
-
-DO NOT include:
-- Specific software or model releases (save for products section)
-- General tech news unrelated to AI
-- Consumer electronics or vehicles
-- Business news from non-AI companies
-
-List 5 INDUSTRY items in this format:
-<li><strong>Company/Topic:</strong> Brief description of the industry development</li>
-
-Focus on the AI ecosystem: who's doing what, funding, regulations, and research."""
-            temperature = 0.5
+        blob_client = blob_service_client.get_blob_client(container_name, blob_name)
+        blob_data = blob_client.download_blob().readall()
+        data = json.loads(blob_data)
         
-        # Force specific AI search terms for retrieval (override default broad search)
-        result = chatbot.chat(query, top_k=15, temperature=temperature, search_override=ai_search_override)
-        
-        # Clean up the response
-        answer = result["answer"]
-        
-        # Remove unwanted phrases
-        unwanted_phrases = [
-            "Based on the provided articles,",
-            "here are 5",
-            "here are five", 
-            "Here are 5",
-            "Here are five",
-            "Based on the articles,",
-            "According to the articles,",
-            "```html",
-            "```"
-        ]
-        for phrase in unwanted_phrases:
-            answer = answer.replace(phrase, "")
-        
-        # Remove article citations like [1], [2], [1][2], etc.
-        answer = re.sub(r'\s*\[\d+\](\[\d+\])*', '', answer)
-        
-        # Clean up markdown-style lists (- or *) and convert to HTML if needed
-        lines = answer.strip().split('\n')
-        cleaned_lines = []
-        for line in lines:
-            line = line.strip()
-            if line:
-                # If line starts with - or *, convert to <li>
-                if line.startswith('-') or line.startswith('*'):
-                    line = line[1:].strip()
-                    if not line.startswith('<li>'):
-                        line = f'<li>{line}</li>'
-                cleaned_lines.append(line)
-        
-        answer = '\n'.join(cleaned_lines)
-        
-        # Wrap in <ul> tags if not already present
-        if '<li>' in answer and not answer.strip().startswith('<ul>'):
-            answer = f'<ul style="margin-top: 0.5rem; color: #2D2D2D;">\n{answer}\n</ul>'
-        
-        return answer.strip()
+        return data.get('content'), data.get('generated_date')
     except Exception as e:
-        return None
+        # Return static fallback if blob doesn't exist yet
+        static_content = {
+            "products": """
+<ul style='margin-top: 0.5rem; color: #2D2D2D;'>
+<li><strong>ChatGPT Canvas:</strong> OpenAI launches collaborative workspace for writing and coding with AI</li>
+<li><strong>Claude 3.5 Sonnet Updated:</strong> Anthropic releases improved version with better coding capabilities</li>
+<li><strong>Meta Movie Gen:</strong> Meta unveils AI video generation model competing with Runway and Pika</li>
+<li><strong>NotebookLM Audio Overview:</strong> Google's AI podcast feature generates conversational summaries from documents</li>
+<li><strong>OpenAI Advanced Voice Mode:</strong> Rolled out to Plus and Team users with improved natural conversation</li>
+</ul>
+""",
+            "industry": """
+<ul style='margin-top: 0.5rem; color: #2D2D2D;'>
+<li><strong>OpenAI:</strong> Reportedly raising funds at $150B valuation, restructuring as for-profit company</li>
+<li><strong>Anthropic:</strong> Secures additional funding from Google and Amazon for Claude development</li>
+<li><strong>EU AI Act:</strong> First comprehensive AI regulation framework takes effect, setting global precedent</li>
+<li><strong>NVIDIA:</strong> Announces next-generation AI chips with improved efficiency for large language models</li>
+<li><strong>AI Research:</strong> New benchmarks show rapid progress in mathematical reasoning and code generation</li>
+</ul>
+"""
+        }
+        return static_content.get(section_type), "October 2025"
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour (refresh if new content uploaded)
+def get_curated_content(section_type):
+    """Get curated content from blob storage with caching"""
+    return load_curated_content_from_blob(section_type)
 
 def show_curated_sections():
-    """Display curated 'New' and 'Upcoming' sections with AI-generated content"""
-    
-    # Add cache clearing button aligned to the right
-    col1, col2 = st.columns([8, 1])
-    with col1:
-        st.write("")  # Empty space for alignment
-    with col2:
-        if st.button("Refresh", type="primary", help="Clear cache and regenerate content"):
-            generate_curated_content.clear()
-            st.rerun()
+    """Display curated sections loaded from Azure Blob Storage"""
     
     # AI Products & Models Section
     st.subheader("AI Products & Models")
     
-    # Get cached content (or generate if not cached)
-    products_content = generate_curated_content("products")
+    products_content, products_date = get_curated_content("products")
     
-    if products_content:
-        st.markdown(f"""
-        <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        {products_content}
-        <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Generated from indexed articles</em></p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        # Fallback to static content if generation fails
-        st.markdown("""
-        <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        <ul style='margin-top: 0.5rem; color: #2D2D2D;'>
-        <li><strong>ChatGPT Canvas:</strong> OpenAI launches collaborative workspace for writing and coding with AI</li>
-        <li><strong>Claude 3.5 Sonnet Updated:</strong> Anthropic releases improved version with better coding capabilities</li>
-        <li><strong>Meta Movie Gen:</strong> Meta unveils AI video generation model competing with Runway and Pika</li>
-        <li><strong>NotebookLM Audio Overview:</strong> Google's AI podcast feature generates conversational summaries from documents</li>
-        <li><strong>OpenAI Advanced Voice Mode:</strong> Rolled out to Plus and Team users with improved natural conversation</li>
-        </ul>
-        <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Updated October 2025</em></p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
+    {products_content}
+    <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Generated from indexed articles on {products_date}</em></p>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
     # AI Industry News Section
     st.subheader("AI Industry News")
     
-    # Get cached content (or generate if not cached)
-    industry_content = generate_curated_content("industry")
+    industry_content, industry_date = get_curated_content("industry")
     
-    if industry_content:
-        st.markdown(f"""
-        <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        {industry_content}
-        <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Generated from indexed articles</em></p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        # Fallback to static content if generation fails
-        st.markdown("""
-        <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
-        <ul style='margin-top: 0.5rem; color: #2D2D2D;'>
-        <li><strong>OpenAI:</strong> Reportedly raising funds at $150B valuation, restructuring as for-profit company</li>
-        <li><strong>Anthropic:</strong> Secures additional funding from Google and Amazon for Claude development</li>
-        <li><strong>EU AI Act:</strong> First comprehensive AI regulation framework takes effect, setting global precedent</li>
-        <li><strong>NVIDIA:</strong> Announces next-generation AI chips with improved efficiency for large language models</li>
-        <li><strong>AI Research:</strong> New benchmarks show rapid progress in mathematical reasoning and code generation</li>
-        </ul>
-        <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Based on industry announcements and trends</em></p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style='background-color: #E8E3D9; padding: 1rem; border-radius: 8px;'>
+    {industry_content}
+    <p style='margin-top: 1rem; font-size: 0.95rem; color: #5D5346;'><em>Generated from indexed articles on {industry_date}</em></p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def show_analytics_page():
     """Analytics and visualizations page"""
