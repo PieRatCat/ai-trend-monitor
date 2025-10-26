@@ -118,4 +118,45 @@ def save_articles_to_blob(articles: List[Dict[str, Any]], container_name: str) -
 
     except Exception as e:
         logging.error(f"Error saving articles to '{container_name}': {e}")
+
+def save_report_to_blob(report_content: str, filename: str, container_name: str = 'weekly-reports') -> str:
+    """
+    Saves a weekly report to Azure Blob Storage.
+    
+    Args:
+        report_content: The markdown content of the report.
+        filename: The filename (e.g., 'weekly_report_2025-10-26.md').
+        container_name: The container where reports are stored.
         
+    Returns:
+        The full blob path (container/filename).
+    """
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    if not connect_str:
+        logging.error("Azure connection string not found.")
+        return ""
+        
+    try:
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+        container_client = blob_service_client.get_container_client(container_name)
+        
+        # Create container if it doesn't exist
+        try:
+            container_client.create_container()
+            logging.info(f"Created container '{container_name}'")
+        except Exception:
+            pass  # Container already exists
+        
+        blob_client = container_client.get_blob_client(filename)
+        
+        # Upload report content
+        blob_client.upload_blob(report_content.encode('utf-8'), overwrite=True)
+        
+        blob_path = f"{container_name}/{filename}"
+        logging.info(f"Successfully saved report to {blob_path}")
+        
+        return blob_path
+
+    except Exception as e:
+        logging.error(f"Error saving report to '{container_name}': {e}")
+        return ""

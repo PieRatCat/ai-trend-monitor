@@ -228,7 +228,7 @@ CRITICAL: Do NOT use emojis, exclamation marks, or casual language. Do NOT use n
         response = self.openai_client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "You are a senior AI engineer writing a technical weekly digest for generative AI developers. Your audience works with LLMs, model training, inference optimization, and AI tools. Focus on technical developments, model releases, research breakthroughs, and tools. Be specific and professional. NEVER use emojis. Avoid repetition across sections. Complete all sentences."},
+                {"role": "system", "content": "You are a senior AI engineer writing a technical weekly digest for generative AI developers. Your audience works with LLMs, model training, inference optimization, and AI tools. Focus on technical developments, model releases, research breakthroughs, and tools. Be specific and professional. NEVER use emojis. Avoid repetition across sections. Complete all sentences. NEVER write introductory paragraphs like 'In the past week' or 'This week's technical digest' - start directly with the content."},
                 {"role": "user", "content": full_prompt}
             ],
             max_tokens=max_tokens,
@@ -266,14 +266,14 @@ CRITICAL: Do NOT use emojis, exclamation marks, or casual language. Do NOT use n
         
         report_sections['models_and_research'] = self.generate_report_section(
             "Models and Research",
-            f"Cover ALL model releases, LLM updates, and research breakthroughs from the 'Models & Software' and 'Research & Technical' categories. Include: specific model names/versions, technical capabilities, performance improvements, architectural innovations, training techniques. This is the ONLY section covering models - be comprehensive. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
+            f"Cover ALL model releases, LLM updates, and research breakthroughs from the 'Models & Software' and 'Research & Technical' categories. Include: specific model names/versions, technical capabilities, performance improvements, architectural innovations, training techniques. This is the ONLY section covering models - be comprehensive. Write in a single flowing narrative with paragraphs - do NOT include an introductory summary paragraph or repeat the section purpose. Start directly with the technical content. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
             context,
             max_tokens=900
         )
         
         report_sections['tools_and_platforms'] = self.generate_report_section(
             "Tools and Platforms",
-            f"Focus exclusively on developer tools, APIs, SDKs, frameworks, and platform updates from the 'Tools & Platforms' category. Do NOT repeat any models already discussed. Cover: new APIs, integrations, workflow tools, deployment platforms. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
+            f"Focus exclusively on developer tools, APIs, SDKs, frameworks, and platform updates from the 'Tools & Platforms' category. Do NOT repeat any models already discussed. Cover: new APIs, integrations, workflow tools, deployment platforms. Write in a single flowing narrative with paragraphs - do NOT include an introductory summary paragraph or repeat the section purpose. Start directly with the technical content. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
             context,
             max_tokens=600
         )
@@ -369,17 +369,17 @@ Report generated {report_date}
         return output
     
     def save_report(self, report, format='markdown'):
-        """Save report to file"""
+        """Save report to Azure Blob Storage"""
+        from src.storage import save_report_to_blob
+        
         timestamp = datetime.now().strftime('%Y-%m-%d')
-        filename = f"reports/weekly_report_{timestamp}.md"
+        filename = f"weekly_report_{timestamp}.md"
         
-        os.makedirs('reports', exist_ok=True)
+        # Save to Azure Blob Storage
+        blob_path = save_report_to_blob(report, filename)
+        logging.info(f"Report saved to Azure: {blob_path}")
         
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(report)
-        
-        logging.info(f"Report saved to: {filename}")
-        return filename
+        return blob_path
     
     def send_report_email(self, report):
         """Send report via email using Azure Communication Services"""
@@ -510,6 +510,49 @@ Report generated {report_date}
         # Add last section
         if current_section and current_content:
             sections[current_section] = '\n'.join(current_content)
+    
+    def _markdown_to_html(self, text):
+        """Convert markdown formatting to HTML"""
+        if not text:
+            return ""
+        
+        # Remove incomplete sentences at the end (text that ends without punctuation)
+        lines = text.split('\n')
+        if lines:
+            last_line = lines[-1].strip()
+            # Check if last line is incomplete (no ending punctuation and seems cut off)
+            if last_line and not last_line[-1] in '.!?':
+                lines = lines[:-1]
+                text = '\n'.join(lines)
+        
+        # Convert **bold** to <strong>
+        import re
+        text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+        
+        # Convert ### headers to <h3>
+        text = re.sub(r'^### (.+?)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
+        
+        # Convert ## headers to <h3> (subheadings)
+        text = re.sub(r'^## (.+?)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
+        
+        # Split into paragraphs (double newline = new paragraph)
+        paragraphs = text.split('\n\n')
+        html_parts = []
+        
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
+                continue
+            
+            # If it's already an HTML tag, keep it
+            if para.startswith('<h3>'):
+                html_parts.append(para)
+            else:
+                # Replace single newlines with spaces within paragraphs
+                para = para.replace('\n', ' ')
+                html_parts.append(f'<p>{para}</p>')
+        
+        return '\n'.join(html_parts)
         
         # Build HTML
         html_template = f"""
@@ -564,11 +607,21 @@ Report generated {report_date}
         }}
         .section-content {{
             font-size: 15px;
-            line-height: 1.6;
+            line-height: 1.8;
             color: #000000;
         }}
         .section-content p {{
-            margin: 0 0 15px 0;
+            margin: 0 0 20px 0;
+        }}
+        .section-content h3 {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #000000;
+            margin: 25px 0 12px 0;
+        }}
+        .section-content strong {{
+            font-weight: 600;
+            color: #000000;
         }}
         .resources {{
             background-color: #f5f5f5;
@@ -664,9 +717,7 @@ Report generated {report_date}
         # Add each section with proper formatting
         if 'EXECUTIVE SUMMARY' in sections:
             content = sections['EXECUTIVE SUMMARY'].strip()
-            # Convert paragraphs
-            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
-            formatted_content = ''.join([f'<p>{p}</p>' for p in paragraphs])
+            formatted_content = self._markdown_to_html(content)
             
             html_template += f"""
             <div class="section">
@@ -679,8 +730,7 @@ Report generated {report_date}
         
         if 'MODELS AND RESEARCH' in sections:
             content = sections['MODELS AND RESEARCH'].strip()
-            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
-            formatted_content = ''.join([f'<p>{p}</p>' for p in paragraphs])
+            formatted_content = self._markdown_to_html(content)
             
             html_template += f"""
             <div class="section">
@@ -693,8 +743,7 @@ Report generated {report_date}
         
         if 'TOOLS AND PLATFORMS' in sections:
             content = sections['TOOLS AND PLATFORMS'].strip()
-            paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
-            formatted_content = ''.join([f'<p>{p}</p>' for p in paragraphs])
+            formatted_content = self._markdown_to_html(content)
             
             html_template += f"""
             <div class="section">
@@ -738,14 +787,28 @@ Report generated {report_date}
             if current_article:
                 articles.append(current_article)
             
-            html_template += f"""
+            # Build metrics HTML - only show non-empty values
+            metrics_html = f"""
             <div class="resources">
-                <h3>This Week's Metrics</h3>
-                <p><strong>Most Mentioned:</strong> {most_mentioned}</p>
-                <p><strong>Top Sources:</strong> {top_sources}</p>
-                <p><strong>Sentiment:</strong> {sentiment}</p>
+                <h3>This Week's Metrics</h3>"""
+            
+            if most_mentioned and most_mentioned != "No entities extracted this week":
+                metrics_html += f"""
+                <p><strong>Most Mentioned:</strong> {most_mentioned}</p>"""
+            
+            if top_sources:
+                metrics_html += f"""
+                <p><strong>Top Sources:</strong> {top_sources}</p>"""
+            
+            if sentiment:
+                metrics_html += f"""
+                <p><strong>Sentiment:</strong> {sentiment}</p>"""
+            
+            metrics_html += """
             </div>
 """
+            
+            html_template += metrics_html
             
             if articles:
                 html_template += """
