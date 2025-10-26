@@ -12,6 +12,8 @@ on:
       - 'streamlit_app/**'
       - 'src/**'
       - 'config/**'
+      - '.streamlit/**'
+      - 'startup.txt'
       - 'requirements.txt'
       - '.github/workflows/main_ai-trend-monitor.yml'
   workflow_dispatch:
