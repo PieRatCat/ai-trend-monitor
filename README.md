@@ -90,6 +90,7 @@ Built with Streamlit, fully responsive across all devices:
 - **Scheduled delivery**: Every Friday at 9:00 AM UTC via Azure Functions
 - **HTML email template**: Mobile-responsive with styled links and unsubscribe functionality
 - **Azure Communication Services**: Reliable email delivery with GDPR compliance
+- **[View sample newsletter →](sample-newsletter-2025-10-28.html)**
 
 ## Technology Stack
 
