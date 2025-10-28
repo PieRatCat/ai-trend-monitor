@@ -3,25 +3,30 @@
 import streamlit as st
 import os
 import sys
+import json
+import random
 from pathlib import Path
 from dotenv import load_dotenv
-from azure.search.documents import SearchClient
-from azure.core.credentials import AzureKeyCredential
+from datetime import datetime, timezone, timedelta
+from collections import Counter
+from email.utils import parsedate_to_datetime
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
-from datetime import datetime
-from collections import Counter
 from wordcloud import WordCloud
 from scipy import stats
-import re
+from dateutil import parser as date_parser
+from azure.search.documents import SearchClient
+from azure.core.credentials import AzureKeyCredential
+from azure.storage.blob import BlobServiceClient
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 from src.rag_chatbot import RAGChatbot
+from src.subscriber_manager import SubscriberManager
+from src.confirmation_email import send_confirmation_email, send_welcome_email
 
 load_dotenv(project_root / '.env')
 
@@ -117,8 +122,6 @@ def search_articles(query_text, source_filter=None, sentiment_filter=None, top=2
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_all_articles():
     """Retrieve all articles filtered to June 1, 2025 onwards"""
-    from dateutil import parser as date_parser
-    
     all_articles = search_articles("*", top=1000)
     cutoff_date = datetime(2025, 6, 1)
     
@@ -199,12 +202,8 @@ def get_responsive_figsize(base_width, base_height, container_fraction=1.0):
 
 def show_subscribe_page():
     """Newsletter subscription page with GDPR compliance"""
-    from src.subscriber_manager import SubscriberManager
-    from src.confirmation_email import send_confirmation_email, send_welcome_email
-    
     st.header("Subscribe to Newsletter")
-    
-    # Normal subscription form
+        
     st.markdown("""
     Stay updated with the latest AI trends, research, and developments delivered to your inbox every Friday.
     
@@ -215,9 +214,8 @@ def show_subscribe_page():
     - No spam, no ads, just quality content
     
     ---
-    """)
+    """)    
     
-    # Subscription form
     with st.form("subscribe_form"):
         email = st.text_input(
             "Email Address",
@@ -280,8 +278,7 @@ def show_subscribe_page():
                     manager = SubscriberManager()
                     result = manager.create_subscription(email)
                     
-                    if result['success']:
-                        # Send confirmation email
+                    if result['success']:                        
                         email_sent = send_confirmation_email(
                             email,
                             result['confirmation_token']
@@ -300,11 +297,9 @@ def show_subscribe_page():
                             """)
                         else:
                             st.error("Error sending confirmation email. Please try again later.")
-                    else:
-                        # Check if this is a pending confirmation
+                    else:                        
                         if 'already sent' in result['message'].lower():
-                            st.warning(result['message'])
-                            # Store email in session state to show resend button outside form
+                            st.warning(result['message'])                            
                             st.session_state['pending_email'] = email
                         else:
                             st.warning(result['message'])
@@ -312,8 +307,7 @@ def show_subscribe_page():
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
                     st.info("Please try again later or contact support.")
-    
-    # Resend confirmation button (outside form)
+        
     if 'pending_email' in st.session_state:
         st.info("**Didn't receive the confirmation email?**")
         if st.button("Resend Confirmation Email", key="resend_conf"):
@@ -328,8 +322,7 @@ def show_subscribe_page():
                     st.error(resend_result['message'])
             except Exception as e:
                 st.error(f"Error: {str(e)}")
-    
-    # Subscriber statistics (admin view - optional)
+        
     with st.expander("Subscriber Statistics", expanded=False):
         try:
             manager = SubscriberManager()
@@ -352,9 +345,6 @@ def main():
     
     # Handle email confirmation
     if 'confirm' in query_params and 'email' in query_params:
-        from src.subscriber_manager import SubscriberManager
-        from src.confirmation_email import send_welcome_email
-        
         confirmation_token = query_params['confirm']
         email = query_params['email']
         
@@ -397,8 +387,6 @@ def main():
     
     # Handle unsubscribe
     elif 'unsubscribe' in query_params and 'email' in query_params:
-        from src.subscriber_manager import SubscriberManager
-        
         unsubscribe_token = query_params['unsubscribe']
         email = query_params['email']
         
@@ -428,7 +416,7 @@ def main():
                         st.error("Error deleting data. Please contact support.")
                 
                 st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
-                st.stop()  # Stop execution
+                st.stop()  
             else:
                 st.error("Invalid unsubscribe link.")
                 st.markdown("[← Return to Home](/) | [Go to Subscribe Page](/Subscribe)")
@@ -480,22 +468,18 @@ def main():
     </style>
     """)
     
-    # Add site title and subtitle at the top
     st.title("AI Trend Monitor")
     st.markdown("*Exploring AI news trends with advanced analytics and search*")
-    st.markdown("---")
+    st.markdown("---")    
     
-    # Define pages for navigation
     news_page = st.Page(show_news_page, title="News")
     analytics_page = st.Page(show_analytics_page, title="Analytics")
     chatbot_page = st.Page(show_chatbot_page, title="Chatbot")
     subscribe_page = st.Page(show_subscribe_page, title="Subscribe")
-    about_page = st.Page(show_about_page, title="About")
+    about_page = st.Page(show_about_page, title="About")    
     
-    # Create navigation at top
     pg = st.navigation([news_page, analytics_page, chatbot_page, subscribe_page, about_page], position="sidebar")
-    
-    # Run the selected page
+        
     pg.run()
 
 def show_news_page():
@@ -509,12 +493,11 @@ def show_news_page():
         search_term = query_params['search']
         if 'email_search_term' not in st.session_state:
             st.session_state.email_search_term = search_term
-    
-    # Single column layout: Search at top, then curated content below
+        
     st.subheader("Search Articles")
     show_search_interface()
     
-    st.markdown("---")  # Divider between sections
+    st.markdown("---")
     
     show_curated_sections()
 
@@ -532,11 +515,11 @@ def show_search_interface():
     
     # Check if coming from email link with search parameter
     default_query = ""
-    auto_search = False  # Flag to trigger search automatically
+    auto_search = False  
     if 'email_search_term' in st.session_state:
         default_query = st.session_state.email_search_term
-        auto_search = True  # Trigger search automatically
-        # Clear after using so it doesn't persist
+        auto_search = True 
+        
         del st.session_state.email_search_term
     
     query = st.text_input(
@@ -580,9 +563,6 @@ def show_search_interface():
             
             if results:
                 # Sort by date (newest first) - parse dates properly
-                from datetime import timezone, timedelta
-                from email.utils import parsedate_to_datetime
-                
                 def parse_date(article):
                     date_str = article.get('published_date', '')
                     if not date_str:
@@ -619,16 +599,14 @@ def show_search_interface():
                     results = [article for article in results if parse_date(article) >= cutoff_date]
                 
                 results_sorted = sorted(results, key=parse_date, reverse=True)
-                
-                # Pagination
+                                
                 items_per_page = 10
                 total_pages = (len(results_sorted) + items_per_page - 1) // items_per_page
                 start_idx = st.session_state.page_number * items_per_page
                 end_idx = start_idx + items_per_page
                 
                 st.markdown(f"**Found {len(results_sorted)} articles** (Page {st.session_state.page_number + 1} of {total_pages})")
-                
-                # Pagination controls at top
+                                
                 if total_pages > 1:
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col1:
@@ -645,12 +623,10 @@ def show_search_interface():
                                 st.rerun()
                 
                 st.markdown("---")
-                
-                # Display results for current page
+                                
                 for article in results_sorted[start_idx:end_idx]:
                     display_article_card_compact(article)
-                
-                # Pagination controls at bottom
+                                
                 if total_pages > 1:
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col1:
@@ -687,14 +663,12 @@ def display_article_card_compact(article):
     
     with st.container():
         st.markdown(f"**{article['title']}**")
-        
-        # Three columns: source, date, sentiment
+                
         col1, col2, col3 = st.columns([2, 1.5, 1.5])
         with col1:
             st.markdown(f"*{article.get('source', 'Unknown')}*", unsafe_allow_html=True)
         with col2:
             # Format date
-            from email.utils import parsedate_to_datetime
             import platform
             date_str = article.get('published_date', 'Unknown')
             if date_str != 'Unknown':
@@ -723,10 +697,8 @@ def display_article_card_compact(article):
                 f"<span style='color: {sentiment_color}; font-weight: 600;'>{sentiment_emoji.get(sentiment, '📰')} {sentiment.title()}</span>",
                 unsafe_allow_html=True
             )
-        
-        # Content preview
-        content = article.get('content', '')
-        # Escape dollar signs to prevent LaTeX rendering issues
+                
+        content = article.get('content', '')        
         content = content.replace('$', r'\$')
         if len(content) > 400:
             st.markdown(f"{content[:400]}...")
@@ -738,10 +710,6 @@ def display_article_card_compact(article):
 
 def load_curated_content_from_blob(section_type):
     """Load pre-generated curated content from Azure Blob Storage"""
-    from datetime import datetime
-    import json
-    from azure.storage.blob import BlobServiceClient
-    
     try:
         connection_string = get_env_var('AZURE_STORAGE_CONNECTION_STRING')
         if not connection_string:
@@ -838,7 +806,6 @@ def show_analytics_page():
             # If entities is a string (JSON), try to parse it
             if isinstance(entities, str):
                 try:
-                    import json
                     entities = json.loads(entities)
                 except:
                     entities = []
@@ -1008,7 +975,6 @@ def show_analytics_page():
         search_results = search_articles(selected_entity, top=1000)
         
         # Apply date filter: June 1, 2025 onwards
-        from dateutil import parser as date_parser
         cutoff_date = datetime(2025, 6, 1)
         
         filtered_results = []
@@ -1762,7 +1728,6 @@ def show_analytics_page():
         
         # Custom color function using AITREND_COLOURS palette
         def aitrend_color_func(word, font_size, position, orientation, random_state=None, **kwargs):
-            import random
             # Use colors from the dashboard palette with variations
             colors = [
                 AITREND_COLOURS['primary'],    # #C17D3D - Muted warm brown/tan
@@ -1851,7 +1816,8 @@ def show_about_page():
     - Interactive analytics dashboard  
     - Source and sentiment breakdowns  
     - RAG-powered chatbot with conversation history
-    - Email newsletter subscription system
+    - Automated weekly newsletter with GPT-4.1-mini summaries
+    - Entity linking from emails to dashboard
     
     ### Project Status
     
@@ -1860,7 +1826,7 @@ def show_about_page():
     **Phase 3 Complete:** Knowledge Mining (Azure AI Search)  
     **Phase 4 Complete:** Interactive Web Dashboard (this app!)  
     **Phase 5 Complete:** RAG-powered chatbot with GPT-4.1-mini  
-    **Phase 6 In Progress:** Automated weekly newsletter (Azure Functions deployment)  
+    **Phase 6 Complete:** Automated weekly newsletter (Azure Functions, scheduled Fridays 9 AM UTC)  
     
     ---
     
@@ -1904,7 +1870,6 @@ def show_chatbot_page():
     @st.cache_data(ttl=300)  # Cache for 5 minutes
     def get_article_count():
         """Get the total number of indexed articles (filtered to June 1, 2025 onwards)"""
-        from dateutil import parser as date_parser
         try:
             search_client = get_search_client()
             if search_client:

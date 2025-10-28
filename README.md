@@ -231,7 +231,7 @@ ai-trend-monitor/
 ## Documentation
 
 Comprehensive project report available in:
-- **Project Report**: `[COMING_SOON].md` - Complete technical documentation, architecture overview, and development insights (publishing next week)
+- **Project Report**: [`project_report.ipynb`](./project_report.ipynb) - Complete technical documentation, architecture overview, and development insights
 
 
 ## Architecture Highlights
