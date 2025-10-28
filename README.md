@@ -9,7 +9,7 @@
 
 **Status**: ✅ Production Deployed - All Features Complete  
 **Live Demo**: [https://trends.goblinsen.se/](https://trends.goblinsen.se/)  
-**Last Updated**: October 23, 2025
+**Last Updated**: October 28, 2025
 
 ---
 
@@ -34,7 +34,7 @@ AI Trend Monitor is a comprehensive news intelligence platform that automaticall
 - **Powered by**: Azure AI Language with batched processing for efficiency
 
 ### Semantic Search
-- **Indexed knowledge base**: 180+ articles searchable by keywords, entities, and phrases
+- **Indexed knowledge base**: 500+ articles searchable by keywords, entities, and phrases
 - **Multi-filter search**: Filter by source, sentiment, date range, and topics
 - **Fast retrieval**: Azure AI Search with keyword matching and ranking
 - **Date-filtered**: Focused on June 2025 onwards for relevant trends
@@ -51,8 +51,9 @@ Built with Streamlit, fully responsive across all devices:
 - **Topic Trend Timeline**: Interactive entity selection with temporal analysis
 - **Sentiment Distribution**: Histogram showing overall article sentiment spectrum
 - **Source Statistics**: Article count and sentiment breakdown by publication
-- **Word Cloud**: Visual representation of most-mentioned entities
 - **Top Topics**: Ranked list of trending themes
+- **Word Cloud**: Visual representation of most-mentioned entities
+
 
 **Chat Page** (RAG-Powered AI Assistant)
 - Natural language queries about AI trends
@@ -119,7 +120,7 @@ Built with Streamlit, fully responsive across all devices:
 **Access the dashboard**: [https://trends.goblinsen.se/](https://trends.goblinsen.se/)
 
 **Features you can try**:
-- **News**: Browse 180+ analyzed AI articles with sentiment indicators
+- **News**: Browse 500+ analyzed AI articles with sentiment indicators
 - **Analytics**: Explore interactive visualizations of AI trends and sentiment patterns
 - **Chat**: Ask the AI assistant questions like "What are the latest AI models?" or "Show me articles from last week about ChatGPT"
 - **Subscribe**: Sign up for weekly AI trend digest emails (GDPR compliant)
