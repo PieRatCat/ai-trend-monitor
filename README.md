@@ -79,15 +79,17 @@ Built with Streamlit, fully responsive across all devices:
 - CSS externalized for maintainability
 
 ### Automated Weekly Newsletter
-- **AI-generated reports**: GPT-4.1-mini creates comprehensive weekly summaries
-- **Four-section format**:
-  - Executive Summary (key developments)
-  - Models and Research (technical advances)
-  - Tools and Platforms (product launches)
-  - Key Resources (top articles with links)
+- **AI-generated reports**: GPT-4.1-mini creates comprehensive weekly summaries from 200+ analyzed articles
+- **Three-section format**:
+  - Executive Summary (150-200 word narrative of key developments)
+  - Models and Research (3-4 paragraphs on LLM updates and technical breakthroughs)
+  - Tools and Platforms (2-3 paragraphs on developer tools, APIs, and integrations)
+- **GPT-based entity extraction**: Automatically identifies 24+ companies, products, and technologies mentioned
+- **Interactive entity links**: 45+ clickable links to dashboard search (e.g., OpenAI, ChatGPT, Anthropic, GPT-4)
+- **Dashboard integration**: Links open `trends.goblinsen.se` with pre-populated search and auto-results
 - **Scheduled delivery**: Every Friday at 9:00 AM UTC via Azure Functions
-- **HTML email template**: Mobile-responsive with unsubscribe links
-- **Azure Communication Services**: Reliable email delivery
+- **HTML email template**: Mobile-responsive with styled links and unsubscribe functionality
+- **Azure Communication Services**: Reliable email delivery with GDPR compliance
 
 ## Technology Stack
 
