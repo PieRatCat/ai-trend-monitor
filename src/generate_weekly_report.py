@@ -298,14 +298,10 @@ CRITICAL: Do NOT use emojis, exclamation marks, or casual language. Do NOT use n
     
     def extract_entities_from_content(self, report_sections):
         """Use GPT to extract key companies, products, and technologies mentioned in the generated content"""
-        # Combine all sections
-        all_content = "\n\n".join([
-            report_sections.get('executive_summary', ''),
-            report_sections.get('models_and_research', ''),
-            report_sections.get('tools_and_platforms', '')
-        ])
+        # Get content from the top_news section
+        all_content = report_sections.get('top_news', '')
         
-        prompt = f"""Read the following AI newsletter content and extract ONLY the specific companies, products, models, and technologies that are explicitly mentioned.
+        prompt = f"""Read the following AI newsletter content and extract ONLY the specific companies, products, and technologies that are explicitly mentioned.
 
 Content:
 {all_content}
@@ -354,28 +350,53 @@ Only include entities that are CLEARLY mentioned in the text above.
         # Step 3: Build context
         context = self.build_context_for_llm(articles, stats)
         
-        # Step 4: Generate report sections (3 sections only - streamlined)
+        # Step 4: Generate single report section - Top 10 AI News
         report_sections = {}
         
-        report_sections['executive_summary'] = self.generate_report_section(
-            "Executive Summary",
-            f"Write a single flowing paragraph (150-200 words) summarizing the week's most significant AI developments. Focus on the overall narrative. NO section headers, NO markdown, NO bullet points - just one cohesive paragraph. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
+        report_sections['top_news'] = self.generate_report_section(
+            "Top 10 AI News",
+            f"""Generate exactly 10 distinct AI news items from this week's articles. PRIORITIZE software developers and ML engineers' needs.
+
+**HIGHEST PRIORITY** (Must include if available):
+- New AI models or major updates (GPT-5.2, Claude, Gemini, LLaMA, Mistral, etc.)
+- LLM releases, version updates, model improvements
+- AI development platforms (Azure AI Foundry, AWS Bedrock, Google Vertex AI, etc.)
+- AI APIs and SDKs (OpenAI API, Anthropic API, model endpoints)
+- ML frameworks and libraries (PyTorch, TensorFlow, Hugging Face updates)
+- AI coding assistants (Copilot, Cursor, Tabnine updates)
+- Model training/fine-tuning tools and techniques
+- AI model benchmarks and performance comparisons
+
+**SECONDARY PRIORITY** (Include if space remains):
+- Generative AI tools (image/video/audio generation)
+- AI research papers with practical applications
+- AI company news (funding, partnerships) IF product-related
+- AI hardware for developers (GPUs, TPUs, inference accelerators)
+- AI regulations affecting developers
+
+**EXPLICITLY EXCLUDE**:
+- General cybersecurity (unless AI system-specific)
+- Non-AI software vulnerabilities
+- Generic tech company news
+- Business/financial news without technical details
+- Legacy systems unrelated to AI
+
+FORMAT EACH ITEM AS:
+<strong>Product/Model/Platform Name:</strong> 2-3 sentences with specific technical details (version numbers, capabilities, APIs, pricing, availability). Include what developers can do with it.
+
+RULES:
+- Lead with the most significant LLM/model/platform news
+- Each item must be CLEARLY DIFFERENT
+- Include version numbers, dates, technical specs when available
+- Be specific about developer impact
+- NO section headers, NO numbering, NO introductions
+- Start directly with the first item
+- Separate each item with a blank line
+- ONLY AI/ML content relevant to software developers
+
+Today's date is {datetime.now().strftime('%B %d, %Y')}.""",
             context,
-            max_tokens=400
-        )
-        
-        report_sections['models_and_research'] = self.generate_report_section(
-            "Models and Research",
-            f"Write 3-4 flowing paragraphs about model releases, LLM updates, and research breakthroughs. Each paragraph should be 80-120 words. Include specific model names/versions, technical capabilities, and innovations. NO section headers, NO markdown, NO bullet points. Write naturally in paragraphs. Start directly with the first model - don't introduce the section. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
-            context,
-            max_tokens=900
-        )
-        
-        report_sections['tools_and_platforms'] = self.generate_report_section(
-            "Tools and Platforms",
-            f"Write 2-3 flowing paragraphs about developer tools, APIs, SDKs, and platforms. Each paragraph 80-120 words. Cover new features, integrations, and updates. NO section headers, NO markdown, NO bullet points. Write naturally in paragraphs. Start directly with the first tool - don't introduce the section. Today's date is {datetime.now().strftime('%B %d, %Y')}.",
-            context,
-            max_tokens=600
+            max_tokens=1400
         )
         
         # Step 4.5: Extract key entities mentioned in the generated content
@@ -414,29 +435,17 @@ Only include entities that are CLEARLY mentioned in the text above.
         categories = self.categorize_articles(articles)
         
         report = f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    AI TREND MONITOR - TECHNICAL WEEKLY DIGEST
+    AI TREND MONITOR - WEEKLY DIGEST
     Week of {week_start} - {report_date}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Analysis of {stats['total_articles']} articles: {len(categories['models_software'])} model/software releases, {len(categories['research_technical'])} research papers, {len(categories['tools_platforms'])} tool updates.
+Analysis of {stats['total_articles']} articles from the past week.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXECUTIVE SUMMARY
+TOP AI NEWS THIS WEEK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{sections['executive_summary']}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MODELS AND RESEARCH
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{sections['models_and_research']}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOOLS AND PLATFORMS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{sections['tools_and_platforms']}
+{sections['top_news']}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 KEY RESOURCES
@@ -447,10 +456,6 @@ Most mentioned: {top_entities_list}
 Top sources: {', '.join([source for source, _ in stats['source_distribution'].items()][:5])}
 
 Sentiment: {sentiment_summary}
-
-Selected technical articles:
-
-{self._format_notable_articles_email(categories['models_software'][:5] if categories['models_software'] else articles[:5])}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -706,12 +711,8 @@ Report generated {report_date}
         week_start = (datetime.now() - timedelta(days=7)).strftime('%B %d, %Y')
         week_info = f"Week of {week_start} - {report_date}"
         
-        # Get article counts by category
-        from src.generate_weekly_report import WeeklyReportGenerator
-        temp_gen = WeeklyReportGenerator()
-        articles = temp_gen.get_weekly_articles(days=7)
-        categories = temp_gen.categorize_articles(articles)
-        article_count = f"Analysis of {stats['total_articles']} articles: {len(categories['models_software'])} model/software releases, {len(categories['research_technical'])} research papers, {len(categories['tools_platforms'])} tool updates."
+        # Article count
+        article_count = f"Analysis of {stats['total_articles']} articles from the past week"
         
         # Build HTML
         html_template = f"""
@@ -772,15 +773,17 @@ Report generated {report_date}
         .section-content p {{
             margin: 0 0 20px 0;
         }}
-        .section-content h3 {{
-            font-size: 16px;
-            font-weight: 600;
-            color: #000000;
-            margin: 25px 0 12px 0;
-        }}
         .section-content strong {{
             font-weight: 600;
             color: #000000;
+        }}
+        .news-item {{
+            margin-bottom: 25px;
+            padding-left: 20px;
+            border-left: 3px solid #cccccc;
+        }}
+        .news-item:last-child {{
+            margin-bottom: 0;
         }}
         .resources {{
             background-color: #f5f5f5;
@@ -873,50 +876,28 @@ Report generated {report_date}
         <div class="content">
 """
         
-        # Get articles and categorize them for source links
-        articles = self.get_weekly_articles(days=7)
-        categories = self.categorize_articles(articles)
-        
-        # Add each section with proper formatting and entity links
-        if 'executive_summary' in report_sections:
-            content = report_sections['executive_summary'].strip()
-            formatted_content = self._markdown_to_html(content)
-            # Add clickable entity links to dashboard
-            formatted_content = self._add_entity_links(formatted_content, stats.get('content_entities', stats['top_entities']))
+        # Add the Top News section with proper formatting and entity links
+        if 'top_news' in report_sections:
+            content = report_sections['top_news'].strip()
+            
+            # Split into individual news items (separated by blank lines or consecutive <strong> tags)
+            # Each item starts with <strong>
+            import re
+            items = re.split(r'\n\s*\n', content)
+            
+            # Format with bullet-style left border for each item
+            formatted_items = []
+            for item in items:
+                if item.strip():
+                    # Add entity links to each item
+                    item_with_links = self._add_entity_links(item.strip(), stats.get('content_entities', stats['top_entities']))
+                    formatted_items.append(f'<div class="news-item">{item_with_links}</div>')
+            
+            formatted_content = '\n'.join(formatted_items)
             
             html_template += f"""
             <div class="section">
-                <h2 class="section-title">Executive Summary</h2>
-                <div class="section-content">
-                    {formatted_content}
-                </div>
-            </div>
-"""
-        
-        if 'models_and_research' in report_sections:
-            content = report_sections['models_and_research'].strip()
-            formatted_content = self._markdown_to_html(content)
-            # Add clickable entity links to dashboard
-            formatted_content = self._add_entity_links(formatted_content, stats.get('content_entities', stats['top_entities']))
-            
-            html_template += f"""
-            <div class="section">
-                <h2 class="section-title">Models and Research</h2>
-                <div class="section-content">
-                    {formatted_content}
-                </div>
-            </div>
-"""
-        
-        if 'tools_and_platforms' in report_sections:
-            content = report_sections['tools_and_platforms'].strip()
-            formatted_content = self._markdown_to_html(content)
-            # Add clickable entity links to dashboard
-            formatted_content = self._add_entity_links(formatted_content, stats.get('content_entities', stats['top_entities']))
-            
-            html_template += f"""
-            <div class="section">
-                <h2 class="section-title">Tools and Platforms</h2>
+                <h2 class="section-title">Top AI News This Week</h2>
                 <div class="section-content">
                     {formatted_content}
                 </div>
