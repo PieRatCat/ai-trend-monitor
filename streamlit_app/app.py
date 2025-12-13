@@ -789,7 +789,7 @@ def show_analytics_page():
     # Add refresh button in top-right corner
     col_title, col_refresh = st.columns([5, 1])
     with col_refresh:
-        if st.button("🔄 Refresh Data", help="Clear cache and reload latest articles"):
+        if st.button("Refresh Data", help="Clear cache and reload latest articles"):
             get_all_articles.clear()
             st.rerun()
     
