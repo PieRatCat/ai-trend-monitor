@@ -18,6 +18,10 @@ from src.search_indexer import index_articles
 # Import report generation
 from src.generate_weekly_report import WeeklyReportGenerator
 
+# Import curated content generation
+from src.generate_curated_news import generate_curated_content, save_to_blob
+from src.rag_chatbot import RAGChatbot
+
 # Import configuration
 from config.api_sources import API_SOURCES
 from config.rss_sources import RSS_FEED_URLS
@@ -110,21 +114,49 @@ def run_weekly_pipeline():
     else:
         logging.info("No new unique articles found this week.")
     
-    # ========== PART 2: REPORT GENERATION & EMAIL ==========
+    # ========== PART 2: CURATED CONTENT GENERATION ==========
+    
+    logging.info("\n\n=== STARTING CURATED CONTENT GENERATION ===\n")
+    
+    try:
+        # Step 9: Generate curated homepage content
+        logging.info("--- Step 9: Generate Curated Homepage Content ---")
+        chatbot = RAGChatbot()
+        
+        # Generate products section
+        products_content = generate_curated_content("products", chatbot)
+        if products_content:
+            save_to_blob("products", products_content)
+            logging.info("✓ Products section generated and saved")
+        else:
+            logging.warning("Failed to generate products content")
+        
+        # Generate industry section
+        industry_content = generate_curated_content("industry", chatbot)
+        if industry_content:
+            save_to_blob("industry", industry_content)
+            logging.info("✓ Industry section generated and saved")
+        else:
+            logging.warning("Failed to generate industry content")
+            
+    except Exception as e:
+        logging.error(f"Error during curated content generation: {str(e)}")
+    
+    # ========== PART 3: WEEKLY REPORT GENERATION & EMAIL ==========
     
     logging.info("\n\n=== STARTING REPORT GENERATION ===\n")
     
     try:
-        # Step 9: Generate weekly report
-        logging.info("--- Step 9: Generate Weekly Report ---")
+        # Step 10: Generate weekly report
+        logging.info("--- Step 10: Generate Weekly Report ---")
         generator = WeeklyReportGenerator()
         report = generator.generate_full_report()
         
         if report:
             logging.info("Report generated successfully.")
             
-            # Step 10: Send email newsletter
-            logging.info("\n--- Step 10: Send Email Newsletter ---")
+            # Step 11: Send email newsletter
+            logging.info("\n--- Step 11: Send Email Newsletter ---")
             email_sent = generator.send_report_email(report)
             
             if email_sent:
