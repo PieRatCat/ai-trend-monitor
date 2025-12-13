@@ -1914,28 +1914,42 @@ def show_chatbot_page():
         try:
             search_client = get_search_client()
             if search_client:
-                # Get all articles with dates
-                results = search_client.search(
-                    search_text="*", 
-                    select=["published_date"], 
-                    top=1000
-                )
-                
-                # Filter to June 1, 2025 onwards (same as Analytics page)
+                # Use pagination to fetch all articles (Azure Search limit: 1000 per query)
                 cutoff_date = datetime(2025, 6, 1)
                 filtered_count = 0
+                batch_size = 1000
+                skip = 0
                 
-                for result in results:
-                    date_str = result.get('published_date', '')
-                    if date_str:
-                        try:
-                            article_date = date_parser.parse(date_str)
-                            if article_date.tzinfo:
-                                article_date = article_date.replace(tzinfo=None)
-                            if article_date >= cutoff_date:
-                                filtered_count += 1
-                        except:
-                            pass
+                while True:
+                    try:
+                        results = search_client.search(
+                            search_text="*", 
+                            select=["published_date"], 
+                            top=batch_size,
+                            skip=skip
+                        )
+                        batch = list(results)
+                        if not batch:
+                            break
+                        
+                        # Count articles after June 1, 2025
+                        for result in batch:
+                            date_str = result.get('published_date', '')
+                            if date_str:
+                                try:
+                                    article_date = date_parser.parse(date_str)
+                                    if article_date.tzinfo:
+                                        article_date = article_date.replace(tzinfo=None)
+                                    if article_date >= cutoff_date:
+                                        filtered_count += 1
+                                except:
+                                    pass
+                        
+                        skip += batch_size
+                        if skip >= 10000:  # Safety limit
+                            break
+                    except Exception:
+                        break
                 
                 return filtered_count
         except Exception:
