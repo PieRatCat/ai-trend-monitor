@@ -75,7 +75,6 @@ def get_full_content(url: str) -> str:
     """
     Scrape full article text for a URL with a robust retry mechanism.
     """
-    source_domain = urlparse(url).netloc
     headers = {
         'User-Agent': (
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -84,7 +83,7 @@ def get_full_content(url: str) -> str:
         ),
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Encoding': 'gzip, deflate',  # CRITICAL FIX: Removed 'br' (Brotli) - causes decompression issues with news.microsoft.com
         'DNT': '1',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
@@ -132,9 +131,15 @@ def get_full_content(url: str) -> str:
     
     soup = BeautifulSoup(response.text, 'html.parser')    
     
+    # CRITICAL FIX: Use the FINAL redirected URL to look up selector, not the original URL
+    # This handles cases where www.microsoft.com redirects to news.microsoft.com
+    source_domain = urlparse(response.url).netloc
+    logging.info(f"Original URL: {url}, Final domain after redirect: {source_domain}")
+    
     # Create a prioritized list of selectors to try
     selectors_to_try = []
     site_specific_selector = SCRAPERS.get(source_domain, {}).get('selector')
+    logging.info(f"Site-specific selector for {source_domain}: {site_specific_selector}")
     
     if site_specific_selector:
         selectors_to_try.append(site_specific_selector)
@@ -143,6 +148,8 @@ def get_full_content(url: str) -> str:
     for fs in FALLBACK_SELECTORS:
         if fs not in selectors_to_try:
             selectors_to_try.append(fs)
+    
+    logging.info(f"Trying {len(selectors_to_try)} selectors: {selectors_to_try}")
             
     content_text = ""
     for selector in selectors_to_try:
@@ -150,11 +157,15 @@ def get_full_content(url: str) -> str:
         if element:
             content_text = element.get_text(separator=' ', strip=True)
             if content_text:
-                logging.info("Successfully extracted content for %s using selector '%s'", url, selector)
+                logging.info("Successfully extracted %d chars for %s using selector '%s'", len(content_text), url, selector)
                 break # Stop after the first success
+            else:
+                logging.info("Selector '%s' found element but extracted 0 chars", selector)
+        else:
+            logging.debug("Selector '%s' found no element", selector)
 
     if not content_text:
-        logging.warning("Could not extract article content for %s", url)
+        logging.warning("Could not extract article content for %s (tried %d selectors)", url, len(selectors_to_try))
         return ""
 
     return fix_encoding_issues(content_text)

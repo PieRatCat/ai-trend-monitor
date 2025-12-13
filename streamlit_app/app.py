@@ -531,7 +531,7 @@ def show_search_interface():
     
     sources = ["All Sources", "The Guardian", "techcrunch.com", "venturebeat.com", 
               "arstechnica.com", "gizmodo.com", "spectrum.ieee.org", "www.theregister.com",
-              "www.theverge.com"]
+              "www.theverge.com", "www.microsoft.com"]
     source_filter = st.selectbox("Source", sources, key="search_source")
     
     sentiments = ["All Sentiments", "positive", "neutral", "negative", "mixed"]
@@ -785,6 +785,13 @@ def show_curated_sections():
 def show_analytics_page():
     """Analytics and visualizations page"""
     st.header("AI News Analytics")
+    
+    # Add refresh button in top-right corner
+    col_title, col_refresh = st.columns([5, 1])
+    with col_refresh:
+        if st.button("🔄 Refresh Data", help="Clear cache and reload latest articles"):
+            get_all_articles.clear()
+            st.rerun()
     
     # Get cached articles
     articles = get_all_articles()
