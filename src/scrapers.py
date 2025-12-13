@@ -15,6 +15,12 @@ SCRAPERS: Dict[str, Dict[str, str]] = {
     'theguardian.com': {'selector': 'div.article-body-commercial-selector'},
     'www.theguardian.com': {'selector': 'div.article-body-commercial-selector'},
     
+    # Microsoft blogs
+    'www.microsoft.com': {'selector': 'main'},
+    'microsoft.com': {'selector': 'main'},
+    'azure.microsoft.com': {'selector': 'main'},
+    'news.microsoft.com': {'selector': 'main'},
+    
     # New event & product launch sources
     'www.theverge.com': {'selector': 'div.duet--article--article-body-component'},
     'theverge.com': {'selector': 'div.duet--article--article-body-component'},

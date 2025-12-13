@@ -4,6 +4,7 @@ RSS_FEED_URLS = [
     'https://gizmodo.com/tag/ai/rss',
     'https://techcrunch.com/category/artificial-intelligence/feed/',
     'https://arstechnica.com/tag/artificial-intelligence/feed/',
+    'https://www.microsoft.com/en-us/ai/blog/feed/',  # Microsoft AI Blog (official announcements & insights)
     
     # Event & Conference Coverage
     'https://techcrunch.com/events/feed/',  # TechCrunch events coverage
