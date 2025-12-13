@@ -283,14 +283,15 @@ class RAGChatbot:
         
         return False
     
-    def retrieve_articles(self, query: str, top_k: int = 5) -> List[Dict]:
+    def retrieve_articles(self, query: str, top_k: int = 5, temporal_query: str = None) -> List[Dict]:
         """
         Retrieve relevant articles from Azure AI Search (filtered to June 1, 2025 onwards)
         Also detects temporal queries like "last 24 hours" for more specific filtering
         
         Args:
-            query: User's search query
+            query: User's search query (what to search for)
             top_k: Number of articles to retrieve (default: 5)
+            temporal_query: Optional separate query to analyze for temporal phrases (default: None, uses query)
             
         Returns:
             List of article dictionaries with title, content, source, date, link
@@ -299,9 +300,12 @@ class RAGChatbot:
         from dateutil import parser as date_parser
         
         try:
+            # Use temporal_query for time detection if provided, otherwise use query
+            query_for_temporal = temporal_query if temporal_query else query
+            
             # Detect if query contains temporal phrases or is future-oriented
-            temporal_range = self._detect_time_range(query)
-            is_future_query = self._is_future_oriented_query(query)
+            temporal_range = self._detect_time_range(query_for_temporal)
+            is_future_query = self._is_future_oriented_query(query_for_temporal)
             
             # Base cutoff: June 1, 2025 (always applied as minimum)
             base_cutoff = datetime(2025, 6, 1)
@@ -440,7 +444,10 @@ class RAGChatbot:
         search_query = search_override if search_override else user_query
         if search_override:
             logger.info(f"Using search override: {search_override}")
-        articles = self.retrieve_articles(search_query, top_k=top_k)
+            # Pass original user_query for temporal detection when using search_override
+            articles = self.retrieve_articles(search_query, top_k=top_k, temporal_query=user_query)
+        else:
+            articles = self.retrieve_articles(search_query, top_k=top_k)
         
         if not articles:
             return {

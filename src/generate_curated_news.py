@@ -30,7 +30,7 @@ def generate_curated_content(section_type, chatbot):
     ai_search_override = "GPT ChatGPT Claude LLM model OpenAI Anthropic machine learning neural network deep learning generative AI"
     
     if section_type == "products":
-        query = """What are the most recent AI SOFTWARE and MODEL developments mentioned in the articles?
+        query = """What are the most recent AI SOFTWARE and MODEL developments from the past 2 weeks mentioned in the articles?
 
 STRICT RULES - Only include if it's about:
 - AI models (GPT-5, Claude 4, Gemini updates, new LLMs, model releases)
@@ -45,13 +45,14 @@ DO NOT include:
 - Funding or investment news without product specifics
 - Regulatory or policy news
 - Generic tech products
+- Articles older than 2 weeks
 
 List 5 SOFTWARE/MODEL items in this format:
 <li><strong>Product/Model Name:</strong> 2-3 sentence description with specific technical details, capabilities, and what makes it notable. Include dates if mentioned in articles.</li>
 
-Focus on practical AI tools and models that developers and practitioners use. Be specific and detailed."""
+Focus on practical AI tools and models that developers and practitioners use. Be specific and detailed. Only include developments from the past 2 weeks."""
     else:  # industry
-        query = """What are the most recent AI INDUSTRY developments mentioned in the articles?
+        query = """What are the most recent AI INDUSTRY developments from the past 2 weeks mentioned in the articles?
 
 STRICT RULES - Only include if it's about:
 - AI company news (OpenAI, Anthropic, Google AI, DeepMind, etc.)
@@ -66,11 +67,12 @@ DO NOT include:
 - General tech news unrelated to AI
 - Consumer electronics or vehicles
 - Business news from non-AI companies
+- Articles older than 2 weeks
 
 List 5 INDUSTRY items in this format:
 <li><strong>Company/Topic:</strong> 2-3 sentence description with specific details about what happened, why it matters, and any relevant numbers or dates.</li>
 
-Focus on the AI ecosystem: who's doing what, funding, regulations, and research. Be specific and detailed."""
+Focus on the AI ecosystem: who's doing what, funding, regulations, and research. Be specific and detailed. Only include developments from the past 2 weeks."""
     
     result = chatbot.chat(query, top_k=15, temperature=0.5, search_override=ai_search_override)
     answer = result["answer"]
