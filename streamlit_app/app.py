@@ -122,7 +122,41 @@ def search_articles(query_text, source_filter=None, sentiment_filter=None, top=2
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_all_articles():
     """Retrieve all articles filtered to June 1, 2025 onwards"""
-    all_articles = search_articles("*", top=1000)
+    # Azure Search has a hard limit of 1000 results per query
+    # Use pagination to fetch all articles
+    all_articles = []
+    batch_size = 1000
+    skip = 0
+    
+    search_client = get_search_client()
+    if not search_client:
+        return []
+    
+    while True:
+        try:
+            results = search_client.search(
+                search_text="*",
+                select=["title", "content", "link", "source", "published_date", 
+                       "sentiment_overall", "sentiment_positive_score", 
+                       "sentiment_neutral_score", "sentiment_negative_score",
+                       "key_phrases", "entities", "indexed_at"],
+                top=batch_size,
+                skip=skip
+            )
+            batch = list(results)
+            if not batch:
+                break
+            all_articles.extend(batch)
+            skip += batch_size
+            
+            # Safety limit to prevent infinite loops
+            if skip >= 10000:
+                break
+        except Exception as e:
+            # If skip goes beyond available results, Azure returns error
+            break
+    
+    # Filter by date
     cutoff_date = datetime(2025, 6, 1)
     
     filtered_articles = []
